@@ -52,6 +52,8 @@ else:
   if verbose == True:
     logger.warning("-o is empty, so TMP and LOG dir will be default: " + config.user_home_dir + '/var')
 
+
+exit()
 #logger.debug("this is a debugging message")
 #logger.info("this is an informational message")
 #logger.warning("this is a warning message")
