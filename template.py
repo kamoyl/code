@@ -8,6 +8,9 @@ from termcolor import colored
 
 import config
 
+def usage():
+  print('help')
+
 print(Fore.RED + 'some red text')
 print('automatically back to default color again')
 
