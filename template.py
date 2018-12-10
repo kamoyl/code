@@ -5,6 +5,7 @@ import getopt
 import logging
 import coloredlogs
 import os
+import tempfile
 
 from colorama import init,Fore, Back, Style
 init(autoreset=True)
@@ -46,12 +47,41 @@ logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG',milliseconds=True)
 
 if output:
-  if verbose == True:
-    logger.debug("all LOGs and TMPs will go then to: " + config.current_directory + '/' + output)
+  new_var = output
+  new_tmp = new_var + '/' + 'tmp'
+  new_log = new_var + '/' + 'log'
+  if not os.path.exists(new_var):
+    try:
+      os.mkdir(new_var)
+      os.mkdir(new_tmp)
+      os.mkdir(new_log)
+      if verbose == True:
+        logger.debug("Successfully created the directory %s " % new_var)
+        logger.debug("all LOGs and TMPs will go then to: " + output)
+    except OSError as err:
+      logger.error("Creating directory failed - possibly permission denid")
+      exit(2)
+  else:
+    if verbose == True:
+      logger.debug("Directory %s exists" %new_var)
 else:
-  if verbose == True:
-    logger.warning("-o is empty, so TMP and LOG dir will be default: " + config.user_home_dir + '/var')
-
+  new_var = config.user_home_dir + '/var'
+  new_tmp = new_var + '/' + 'tmp'
+  new_log = new_var + '/' + 'log'
+  if not os.path.exists(new_var):
+    try:
+      os.mkdir(new_var)
+      os.mkdir(new_tmp)
+      os.mkdir(new_log)
+      if verbose == True:
+        logger.debug("Successfully created the directory %s " % new_var)
+        logger.debug("all LOGs and TMPs will go then to: " + new_var)
+    except OSError as err:
+      logger.error("Creating directory failed - possibly permission denid")
+      exit(2)
+  else:
+    if verbose == True:
+      logger.debug("Directory %s exists" %new_var)
 
 exit()
 #logger.debug("this is a debugging message")
