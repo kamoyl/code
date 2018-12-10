@@ -1,6 +1,10 @@
 #!/usr/bin/env python2.7
 
-import sys,getopt
+import sys
+import getopt
+import logging
+import coloredlogs
+import os
 
 from colorama import init,Fore, Back, Style
 init(autoreset=True)
@@ -9,7 +13,13 @@ from termcolor import colored
 import config
 
 def usage():
-  print('help')
+  print(config.cyan + 'Usage:')
+  print(__file__ + ' [-o DIRECTORY] -h -v')
+  print(config.cyan + 'This script is only template which by default has only few options, and none is mandatory\n')
+  print(config.lime + '   -o' + config.blue + '   directory to which will go all LOGs and TMPs')
+  print(config.blue + '        default: ' + os.environ['HOME'] + '/var')
+  print(config.lime + '   -v' + config.blue + '   verbose')
+  print(config.lime + '   -h' + config.blue + '   help')
 
 try:
   opts, args = getopt.getopt(sys.argv[1:], "ho:v", ["help", "output="])
@@ -32,11 +42,21 @@ for o, a in opts:
   else:
     assert False, "unhandled option"
 
+logger = logging.getLogger(__name__)
+coloredlogs.install(level='DEBUG',milliseconds=True)
+
 if output:
-  print('-o is ' + output)
+  if verbose == True:
+    logger.debug("all LOGs and TMPs will go then to: " + config.current_directory + '/' + output)
 else:
-  print('-o is empty')
-  exit()
+  if verbose == True:
+    logger.warning("-o is empty, so TMP and LOG dir will be default: " + config.user_home_dir + '/var')
+
+#logger.debug("this is a debugging message")
+#logger.info("this is an informational message")
+#logger.warning("this is a warning message")
+#logger.error("this is an error message")
+#logger.critical("this is a critical message")
 
 print(Fore.RED + 'some red text')
 print('automatically back to default color again')
