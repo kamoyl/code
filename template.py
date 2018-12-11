@@ -6,6 +6,8 @@ import logging
 import coloredlogs
 import os
 import tempfile
+#import datetime
+#import time
 
 from colorama import init,Fore, Back, Style
 init(autoreset=True)
@@ -83,6 +85,7 @@ else:
     if verbose == True:
       logger.debug("Directory %s exists" %new_var)
 
+print(config.current_timestamp)
 exit()
 #logger.debug("this is a debugging message")
 #logger.info("this is an informational message")
