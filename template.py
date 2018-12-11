@@ -58,14 +58,14 @@ if output:
       os.mkdir(new_tmp)
       os.mkdir(new_log)
       if verbose == True:
-        logger.debug("Successfully created the directory %s " % new_var)
-        logger.debug("all LOGs and TMPs will go then to: " + output)
+        logger.debug("Successfully created the directory: " + config.blue + new_var)
+        logger.debug("all LOGs and TMPs will go then to: "+ config.blue + output)
     except OSError as err:
-      logger.error("Creating directory failed - possibly permission denid")
+      logger.error("Creating directory failed - possibly permission denied")
       exit(2)
   else:
     if verbose == True:
-      logger.debug("Directory %s exists" %new_var)
+      logger.debug("Directory for tmp and logs exists: " + config.blue + new_var)
 else:
   new_var = config.user_home_dir + '/var'
   new_tmp = new_var + '/' + 'tmp'
@@ -76,17 +76,18 @@ else:
       os.mkdir(new_tmp)
       os.mkdir(new_log)
       if verbose == True:
-        logger.debug("Successfully created the directory %s " % new_var)
-        logger.debug("all LOGs and TMPs will go then to: " + new_var)
+        logger.debug("Successfully created the directory: " + config.blue + new_var)
+        logger.debug("all LOGs and TMPs will go then to: " + config.blue + new_var)
     except OSError as err:
-      logger.error("Creating directory failed - possibly permission denid")
+      logger.error("Creating directory failed - possibly permission denied")
       exit(2)
   else:
     if verbose == True:
-      logger.debug("Directory %s exists" %new_var)
+      logger.debug("Directory for tmp and logs exists: " + config.blue + new_var)
 
-logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
-logger.debug('my default ip is: ' + config.blue + config.get_ip())
+if verbose == True:
+  logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
+  logger.debug('my default ip is: ' + config.blue + config.get_ip())
 exit()
 #logger.debug("this is a debugging message")
 #logger.info("this is an informational message")
