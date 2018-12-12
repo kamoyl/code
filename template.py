@@ -6,6 +6,7 @@ import logging
 import coloredlogs
 import os
 import tempfile
+import teradata
 #import datetime
 #import time
 
@@ -87,6 +88,22 @@ else:
 
 logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
 logger.debug('my default ip is: ' + config.blue + config.get_ip())
+
+import teradata
+ 
+udaExec = teradata.UdaExec (appName="kamil_python_test", version="1.0", logConsole=False)
+dataSourceName = 'PROD'
+tdpid = 'tdp.ds.gen.local'
+username = 'Data_Transport_User'
+tdwallet_string = 'w_' + dataSourceName + username
+#udaExec.connect("${dataSourceName}", password="$$tdwallet(password_$$(tdpid)") 
+#udaExec.connect("${dataSourceName}", password="$$tdwallet(${tdwallet_string})")
+#session = udaExec.connect("${dataSourceName}", method="odbc", system="${tdpid}", username="${username}", password="$$tdwallet(${tdwallet_string})");
+session = udaExec.connect(method="odbc", driver='Teradata Database ODBC Driver 15.10', system=tdpid, username=username, password="$$tdwallet(" + tdwallet_string + ")");
+ 
+for row in session.execute("SELECT GetQueryBand()"):
+    print(row)
+
 exit()
 #logger.debug("this is a debugging message")
 #logger.info("this is an informational message")
