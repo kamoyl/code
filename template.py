@@ -85,7 +85,8 @@ else:
     if verbose == True:
       logger.debug("Directory %s exists" %new_var)
 
-print(config.current_timestamp)
+logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
+logger.debug('my default ip is: ' + config.blue + config.get_ip())
 exit()
 #logger.debug("this is a debugging message")
 #logger.info("this is an informational message")
