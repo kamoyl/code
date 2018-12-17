@@ -34,6 +34,8 @@ except getopt.GetoptError as err:
   sys.exit(2)
 output = None
 verbose = False
+script_path = os.path.realpath(__file__)
+scripts_home = os.path.dirname(script_path)
 
 for o, a in opts:
   if o in ("-v", "--verbose"):
@@ -86,18 +88,10 @@ else:
     if verbose == True:
       logger.debug("Directory for tmp and logs exists: " + config.blue + new_var)
 
-udaExec = teradata.UdaExec (appName="kamil_python_test", version="1.0", logConsole=False)
-dataSourceName = 'PROD'
-tdpid = 'tdp.ds.gen.local'
-username = 'Data_Transport_User'
-tdwallet_string = 'w_' + dataSourceName + username
-#udaExec.connect("${dataSourceName}", password="$$tdwallet(password_$$(tdpid)") 
-#udaExec.connect("${dataSourceName}", password="$$tdwallet(${tdwallet_string})")
-#session = udaExec.connect("${dataSourceName}", method="odbc", system="${tdpid}", username="${username}", password="$$tdwallet(${tdwallet_string})");
-session = udaExec.connect(method="odbc", driver='Teradata Database ODBC Driver 15.10', system=tdpid, username=username, password="$$tdwallet(" + tdwallet_string + ")");
- 
-for row in session.execute("SELECT GetQueryBand()"):
-    print(row)
+os.environ["TMP"] = new_tmp
+os.environ["VAR"] = new_var
+os.environ["LOG"] = new_log
+os.system(scripts_home + '/template.bash')
 
 if verbose == True:
   logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
