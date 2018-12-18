@@ -1,45 +1,17 @@
-# my CV:
-My **resume** written based on ModernVC template: 
-* [LaTeX templates ModernCV page](http://www.latextemplates.com/template/moderncv-cv-and-cover-letter)
-* [GitHub Page of author](https://github.com/xdanaux/moderncv)
+# code:
+
+In this repo, there are some of my exercises of coding - mixing code between **SQL**, **bash** and **python**
+using many showed examples in the Internet, and of course documentation...
+
+bash has been used partially only because I have noticed that it is easier to implement SQL queries then manage
+it by python + ODBC, and it is also far easier to start using such combination on different systems knowing that
+only bash, python + modules is needed (and in this case Teradata command line client - bteq)
 
 ## ToDo:
-- [ ] - correct first paragraph - regarding to works done;
-- [ ] - upgrade to newest ModernCV
-- [ ] - corections in paragraph
-
-If you would like to see ready example of it, please do:
-* `<git clone git@github.com:kamoyl/docs.git>`
-* in `<cv>` directory run:
-* `<lualatex KamilCzarnecki.tex>`
-
-Of course - main prerequisite is to have installed **LaTeX**: 
-* for Linux: [TexLive](http://www.tug.org/texlive/)
-* for macOS: [macTeX](http://www.tug.org/mactex/)
-* for windows: [micTeX](https://miktex.org/)
-
-# sendbajt story:
-This is a funny short story about some old geeks who have taken care of computer science 
-somewhere in the 80's using mostly phone, whistling and pieces of paper :)
-If you would like to see ready example of it, please do:
-* `<git clone git@github.com:kamoyl/docs.git>`
-* in root of cloned repo, run: `<latexmk sendbajt.tex`>:
-* main prerequisite is... fluent polish :)
-
-# thesis:
-One of my thesis (**Computer Science**) written in LaTeX years ago, in time when LB was heavy big
-expensive soft, cost as hell and possibkle to install mostly on big machines like **IBM Power**
-If you would like to see ready example of it, please do:
-* `<git clone git@github.com:kamoyl/docs.git>`
-* in `<thesis>` directory run:
-* `<latexmk dyplom.tex>` or 3x times `<pdflatex dyplom.tex`> or 3x times `<latex dyplom.tex`>
-* main prerequisite is... fluent polish :)
-
-> You've gotta dance like there's nobody watching,
-> Love like you'll never be hurt,
-> Sing like there's nobody listening,
-> And live like it's heaven on earth.
-― William W. Purkey
+- [ ] - still a lot, manage all variables in python - to read them by sql script
+- [ ] - lots of notification, error handling (still recognizing topic)
+- [ ] - paralellization - I would love to implement it, but... yeah, time will show
+- [ ] - lots more :)
 
 # Changelog:
 

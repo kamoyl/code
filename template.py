@@ -103,13 +103,13 @@ start_time_bash_seconds = float(start_time_bash[-9:])
 start_time_bash_minutes = int(start_time_bash[-12:-10])
 bash_seconds = [start_time_bash_seconds, -start_time_bash_seconds]
 bash_minutes = [start_time_bash_minutes, -start_time_bash_minutes]
-os.system(scripts_home + '/template.bash')
+os.system(scripts_home + '/template.bash ; if [ $? -ne 0 ] ; then exit 1 ; fi')
 #subprocess.call(scripts_home + '/template.bash', shell=True)
 #bash_error = os.environ["$?"]
 #print(os.environ["$?"])
 #bash_runtime = os.environ['BASH_RUNTIME']
 #print os.environ['BASH_RUNTIME']
-print os.getenv('BASH_RUNTIME')
+#print os.getenv('BASH_RUNTIME')
 #print(bash_error)
 
 end_time_bash = str(datetime.datetime.now())
@@ -140,7 +140,6 @@ time_python_seconds = sum(python_seconds)
 
 logger.debug(config.limon + "Run time: " + config.wine + str(time_template_minutes) + config.limon +  " minutes, " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
 logger.debug(config.limon + "BASH script run for: " + config.wine +  str(time_bash_minutes) + config.limon + " minutes, " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
-#print(bash_runtime)
 logger.debug(config.limon + "Python script run for: " + config.wine + str(time_python_minutes) + config.limon + " minutes, " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
 logger.debug(config.limon + "Python script runtime is shorter then BASH: " + str(time_bash_seconds/time_python_seconds) + "x time")
 

@@ -54,4 +54,4 @@ LOG=${YELLOW}${LOG}"
 
 END_BASH_TIME=$(date +%s.%4N)
 export BASH_RUNTIME=$(echo "scale=4; x=(${END_BASH_TIME} - ${START_BASH_TIME}); if(x<1) print 0; x" | bc)
-inf "${BASH_RUNTIME} seconds"
+inf "BASH script run for: ${BASH_RUNTIME} seconds"
