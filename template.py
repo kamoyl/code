@@ -121,6 +121,12 @@ bash_minutes = [end_time_bash_minutes, -start_time_bash_minutes]
 if verbose == True:
   logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
   logger.debug('my default ip is: ' + config.blue + config.get_ip())
+  if config.koen == 1:
+    logger.debug(config.blue + 'koen_network is present')
+  elif config.vpn == 1:
+    logger.debug(config.blue + 'vpn is present')
+  else:
+    logger.debug(config.blue + 'possibly not attached to the office')
 
 end_time_template = str(datetime.datetime.now())
 end_time_template_seconds = float(end_time_template[-9:])
