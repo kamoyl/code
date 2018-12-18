@@ -1,0 +1,470 @@
+#!/bin/bash
+
+RESET=$(tput -T xterm sgr0)
+
+START_BASH_TIME=$(date +%s.%4N)
+
+exec 3>&2 # logging stream (file descriptor 3) defaults to STDERR
+verbosity=5 # default to show warnings
+silent_lvl=0
+crt_lvl=1
+err_lvl=2
+wrn_lvl=3
+inf_lvl=4
+dbg_lvl=5
+
+notify() { log ${silent_lvl} "${LIME}NOTE: $1${BLUE}"; } # Always prints
+critical() { log ${crt_lvl} "${BRIGHT}${RED}CRITICAL: $1${NORMAL}${BLUE}"; }
+error() { log ${err_lvl} "${RED}ERROR: $1${BLUE}"; }
+warn() { log ${wrn_lvl} "${WINE}WARNING: $1${BLUE}"; }
+inf() { log ${inf_lvl} "${CYAN}INFO: $1${BLUE}"; } # "info" is already a command
+debug() { log ${dbg_lvl} "DEBUG: $1"; }
+log() {
+      if [ ${verbosity} -ge $1 ]
+      then
+        datestring=$(date +'%H:%M:%S')
+        # Expand escaped characters, wrap at 300 chars, indent wrapped lines
+        echo -e "${BLUE}${datestring} $(basename $0) [bash_pid: ${$}] ${SHLVL} ${2}${RESET}" | fold -w300 -s | sed '2~1s/^/  /' >&3
+      fi
+}
+export -f inf
+export -f debug
+export -f warn
+export -f critical
+export -f notify
+export -f error
+export -f log
+export verbosity
+
+function failed {
+  local r=$?
+  set +o errtrace
+  set +o xtrace
+  error "EXIT code: ${YELLOW}${r}${RED} in ${YELLOW}${BASH_SOURCE[1]}${RED} at about ${YELLOW}${BASH_LINENO[0]}${RED}"
+}
+
+inf "Preparing report files for ${REPORT_DATE}"
+
+debug "$0:
+SCRIPTS_HOME=${YELLOW}${SCRIPTS_HOME}${BLUE}
+TMP=${YELLOW}${TMP}${BLUE}
+VAR=${YELLOW}${VAR}${BLUE}
+LOG=${YELLOW}${LOG}"
+
+END_BASH_TIME=$(date +%s.%4N)
+export BASH_RUNTIME=$(echo "scale=4; x=(${END_BASH_TIME} - ${START_BASH_TIME}); if(x<1) print 0; x" | bc)
+inf "BASH script run for: ${WINE}${BASH_RUNTIME}${CYAN} seconds"
+
+exit 0
+
+bteq <<-END > "${PATH_LOGS}/${LOG_FILE}" 2>&1
+.LOGON ${TD_SERVER}/${TD_USER},${TD_PASSWD}
+.SET SESSION CHARSET 'UTF8';
+.SET WIDTH 65531;
+.SET RETLIMIT * , 1000;
+.SET SEPARATOR "~";
+.SET NULL AS "0";
+.SET TITLEDASHES OFF;
+.SHOW CONTROLS;
+.SET ECHOREQ ON ;
+  .SET ENCRYPTION ON ;
+
+--************************************************************************************
+--> Report 302 flow call 
+--************************************************************************************
+CALL ${DBALOGV}.SP_REPORTS(${REPORT_NUMBER}, '${REPORT_DATE}', RC);
+.IF ERRORCODE <> 0 THEN .QUIT 1
+
+/*
+AMPCONFIG
+This query shows all TD AMP worker nodes in the system. Just FYI 
+Shows current  COD settings.
+*/
+.os rm -rf "${TMP}/${REPORT_FILE1}";
+.EXPORT report file = "${TMP}/${REPORT_FILE1}";
+
+SELECT 
+	 nodeid AS "Node ID"
+	,nodetype AS "Node Type"
+	,CAST(CAST(wm_cpu_cod AS INTEGER) AS VARCHAR(100)) AS "CPU capacity Limit"
+	,CAST(CAST(wm_io_cod AS INTEGER) AS VARCHAR(100))AS "I/O bandwidth capacity Limit"
+	,CAST(CAST(ncpus AS INTEGER) AS VARCHAR(100))AS "Number of CPU per Node"
+	,CAST(CAST(VPROC1 AS INTEGER) AS VARCHAR(100)) AS "Number of AMPs per Node"
+	,CAST(CAST(VPROC2 AS INTEGER) AS VARCHAR(100))AS "Number of PE's per Node"
+	,CAST(CAST(CPU_seconds_per_node AS INTEGER) AS VARCHAR(100)) AS "CPU seconds per Node, unconstrained"
+FROM 
+	${DBALOGV}.R302_AMPCONFIG_CAPACITY
+ORDER BY nodeid;
+.IF ERRORCODE <> 0 THEN .QUIT 1
+
+.EXPORT  RESET;
+
+/*
+DISKSPACE
+We analyse volume of data.
+Teradata rough number advocated spoolreserve = 30% of maxperm.
+Hence remaining 70 percent is customer usable
+Currently used
+Query shows 14 days history currentperm, maxperm. There is NO COD for diskspace.
+Fairly simple , stable list. Maybe a peak for migration. 
+Please note we have no historic data on individual amp currentperm, to isolate historic ampskew.
+*/
+
+.os rm -rf "${TMP}/${REPORT_FILE2}";
+.EXPORT report file = "${TMP}/${REPORT_FILE2}";
+
+SELECT 
+  thedate AS "Date" 
+, CAST(CAST(maxpermspace AS INTEGER) AS VARCHAR(100)) AS "Maximum perm space GB" 
+, CAST(CAST(spool_space_res_gb AS INTEGER) AS VARCHAR(100)) AS "Spool space reserve GB" 
+, CAST(CAST(maxperm_space_use_gb AS INTEGER) AS VARCHAR(100)) AS "Maximum perm space usable GB" 
+, CAST(CAST(perm_space_usable_gb AS INTEGER) AS VARCHAR(100)) AS "Perm space in use GB" 
+, CAST(CAST(avail_permspace AS  INTEGER) AS VARCHAR(100)) "Available perm space GB" 
+FROM ${DBALOGV}.R302_DISKSPACE_CAPACITY 
+ORDER BY thedate;
+.IF ERRORCODE <> 0 THEN .QUIT 1
+
+.EXPORT  RESET;
+
+/*
+SKEWENESS
+If the system is highly skewed, we have a high Impactperm
+This is the loss due to skew, systemwide. On sum(databaselevel) it might be higher.
+*/
+
+.os rm -rf "${TMP}/${REPORT_FILE3}";
+.EXPORT report file = "${TMP}/${REPORT_FILE3}";
+
+SELECT 
+  HASHAMP() + 1 AS "Number of AMPs"
+, CAST(CAST(SUM(AmpGB) AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  AS "Perm space in use GB"
+, CAST(CAST((SUM(AmpGB)/(HASHAMP()+1))AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))   AS "Average perm space GB per AMP" 
+, CAST(CAST(MAX(AmpGB) AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  AS "Maximum perm space GB per AMP"
+, CAST(CAST((MAX(AmpGB) * (HASHAMP() + 1)) AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  AS "Skew impact GB"
+, CAST(CAST(("Skew impact GB" - "Perm space in use GB" ) AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  AS "Skew loss GB"
+FROM 
+	(
+	SELECT vproc, SUM(currentperm ) / 1024**3  AS AmpGB 
+	FROM ${DBALOGV}.DISKSPACEV_DBC
+	GROUP BY vproc
+	) a;
+.IF ERRORCODE <> 0 THEN .QUIT 1
+.EXPORT  RESET;
+
+/*
+here comes the data over past 5 weeks system usage, per hour. 24* 35 records.
+This volatile holds CPU and IO data, for reporting later-on. Granularity:
+military date, avoiding formatting issues
+
+picked up for group by preparation, dependent from date,
+
+time expressed as hour (truncated to)
+ncpus is basically nbr_chips * nbr_cores * 2 (hyperthreading). Times 600 since 10 minute intervals.
+here we lift the CPUCOD , need to div by 10 to get percentage (upper limit = 1000)
+This is the limit for CPU busy under COD
+What's actually consumed. This can be slightly higher than the limit. Consider this a present :-)
+Hence remaining from limit
+
+In case you want to see the waitIO (high = meaning: busy disk)
+real idle: not even waiting for disks to return.
+IOCOD is a number with max 100, no need to divide by 10 this time  :-)
+
+CPU busy percentage WITHOUT COD
+CPU busy percentage UNDER COD. This can be slightly higher than 100!
+Iowait as percentage of total available CPU.
+
+make this Xweeks full, now set @ 5
+
+CPU Hourly details
+*/
+
+.os rm -rf "${TMP}/${REPORT_FILE4}";
+.EXPORT report file = "${TMP}/${REPORT_FILE4}";
+
+SELECT    
+	 int_date 
+	, dayname
+	, hr
+	, CAST(CAST(totalcpu AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100)) 
+	, CAST(CAST(cpu_cod AS INTEGER) AS VARCHAR(100)) 
+	, CAST(CAST(limitcpu AS INTEGER) AS VARCHAR(100)) 
+	, CAST(CAST(execcpu AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  
+	, CAST(CAST(remaincpu AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  
+	, CAST(CAST(totalidlecpu AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  
+	, CAST(CAST(iowaitcpu AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))   
+	, CAST(CAST(idlecpu AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))
+	, CAST(CAST(io_cod AS INTEGER) AS VARCHAR(100)) 
+	, CAST(CAST(iodatagb AS INTEGER) AS VARCHAR(100))          
+    , CAST(CAST(ioreaddatagb AS INTEGER) AS VARCHAR(100))     
+    , CAST(CAST(iowritedatagb AS INTEGER) AS VARCHAR(100))      
+    , CAST(CAST(m_io AS INTEGER) AS VARCHAR(100))      
+    , CAST(CAST(m_io_read  AS INTEGER) AS VARCHAR(100))     
+    , CAST(CAST(m_io_write AS INTEGER) AS VARCHAR(100))  
+	, CAST(CAST(cpu_busy AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  
+	, CAST(CAST(cpu_cod_busy AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  
+	, CAST(CAST(cpu_iowait AS DECIMAL(18,2) FORMAT 'Z(20)9.99') AS VARCHAR(100))  
+	, CAST(CAST(max_awt AS INTEGER) AS VARCHAR(100)) 
+ FROM ${DBALOGV}.R302_HOURLY_SPMA ORDER BY 1,2,3;
+.IF ERRORCODE <> 0 THEN .QUIT 1
+.EXPORT  RESET;
+
+/*
+CPUCODBusy hour_Day
+this is the combined hourly/daily view, covering at least 1 month of history
+Pivot within SQL, CPU use (under COD) only.
+*/
+
+.os rm -rf "${TMP}/${REPORT_FILE5}";
+.EXPORT report file = "${TMP}/${REPORT_FILE5}";
+
+SELECT 
+  SUBSTRING (dayname FROM 3) AS "Day of week"  
+, int_date AS "Date" 
+, SUBSTRING(dayname FROM 3) || int_date AS "Day shortname" 
+, CAST(CAST((SUM( CASE WHEN hr= 0 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "00:00"
+, CAST(CAST((SUM( CASE WHEN hr= 1 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "01:00"
+, CAST(CAST((SUM( CASE WHEN hr= 2 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "02:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 3 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "03:00"  
+, CAST(CAST((SUM( CASE WHEN hr= 4 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "04:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 5 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "05:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 6 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "06:00"  
+, CAST(CAST((SUM( CASE WHEN hr= 7 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "07:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 8 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "08:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 9 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "09:00"  
+, CAST(CAST((SUM( CASE WHEN hr= 10 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "10:00"
+, CAST(CAST((SUM( CASE WHEN hr= 11 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "11:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 12 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "12:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 13 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "13:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 14 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "14:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 15 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "15:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 16 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "16:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 17 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "17:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 18 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "18:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 19 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "19:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 20 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "20:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 21 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "21:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 22 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "22:00" 
+, CAST(CAST((SUM( CASE WHEN hr= 23 THEN cpu_cod_busy ELSE 0 END )) AS INTEGER) AS VARCHAR(100)) AS "23:00" 
+, CAST(CAST((AVG(cpu_cod_busy)) AS INTEGER) AS VARCHAR(100)) AS "Average CPU busy per day" 
+FROM ${DBALOGV}.R302_HOURLY_SPMA 
+GROUP BY 1,2,3 
+ORDER BY int_date; 
+.IF ERRORCODE <> 0 THEN .QUIT 1
+.EXPORT  RESET;
+
+/*
+CPU Weekday details
+*/
+
+.os rm -rf "${TMP}/${REPORT_FILE6}";
+.EXPORT report file = "${TMP}/${REPORT_FILE6}";
+
+SELECT 
+  dayname AS "Day of week", 
+  hr AS "Hour" 
+, CAST(CAST((AVG(limitcpu) /1024) AS INTEGER ) AS VARCHAR(100)) AS "Average CPU seconds limit"
+, CAST(CAST((AVG(execcpu) /1024) AS INTEGER ) AS VARCHAR(100)) AS "Average CPU seconds in use" 
+, CAST(CAST((AVG(remaincpu ) / 1024) AS INTEGER ) AS VARCHAR(100)) AS "Average remaining CPU seconds" 
+, CAST(CAST((AVG(cpu_cod_busy)) AS INTEGER) AS VARCHAR(100))  AS "Average CPU usage" 
+, 0 AS "projected additional KCPU" 
+FROM ${DBALOGV}.R302_HOURLY_SPMA 
+GROUP BY 1,2 
+ORDER BY 1,2; 
+.IF ERRORCODE <> 0 THEN .QUIT 1
+
+.EXPORT  RESET;
+
+/*
+CPUCODBusy Weekday
+*/
+
+.os rm -rf "${TMP}/${REPORT_FILE7}";
+.EXPORT report file = "${TMP}/${REPORT_FILE7}";
+
+SELECT 
+  thedate AS "Date"
+  , CAST(CAST(SUM(CASE WHEN thehour = 0 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "00:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 1 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "01:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 2 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "02:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 3 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "03:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 4 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "04:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 5 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "05:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 6 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "06:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 7 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "07:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 8 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "08:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 9 THEN impact_cpu_pct END) AS INTEGER ) AS VARCHAR(100)) AS "09:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 10 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "10:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 11 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "11:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 12 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "12:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 13 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "13:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 14 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "14:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 15 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "15:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 16 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "16:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 17 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "17:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 18 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "18:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 19 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "19:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 20 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "20:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 21 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "21:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 22 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "22:00"
+  , CAST(CAST(SUM(CASE WHEN thehour = 23 THEN impact_cpu_pct END)AS INTEGER ) AS VARCHAR(100)) AS "23:00"
+, CAST(CAST(SUM(impact_cpu_pct) AS INTEGER ) AS VARCHAR(100)) "Sum Impact CPU%"
+FROM ${DBALOGV}.R302_CPU_HEAT_HOUR
+group by 1
+ORDER BY 1;
+.IF ERRORCODE <> 0 THEN .QUIT 1
+.EXPORT RESET
+
+
+/* AWT Grid Graph*/
+
+.os rm -rf "${TMP}/${REPORT_FILE8}";
+.EXPORT report file = "${TMP}/${REPORT_FILE8}";
+
+SELECT
+  CAST(thedate AS VARCHAR(10)), 
+  CAST(thistime AS VARCHAR(10)),
+  CAST(CAST(SUM(CASE WHEN wdtype='WD_ETL' THEN sum_AWT_inuse  END)AS INTEGER ) AS VARCHAR(100)) AS  "WD_ETL" ,
+  CAST(CAST(SUM(CASE WHEN wdtype='WD_OTHER' THEN sum_AWT_inuse  END) AS INTEGER ) AS VARCHAR(100))AS  "WD_OTHER"
+  -- , CAST(CAST(SUM(sum_AWT_inuse) AS INTEGER ) AS VARCHAR(100)) AS  "Sum Of AWT Inuse"
+FROM ${DBALOGV}.R302_AWT_DETAILS
+GROUP BY 1,2
+ORDER BY 1,2;
+.IF ERRORCODE <> 0 THEN .QUIT 1
+
+.EXPORT RESET
+
+.os rm -rf "${TMP}/${REPORT_FILE9}";
+.EXPORT report file = "${TMP}/${REPORT_FILE9}";
+
+/* Flow Control Heat Map*/
+
+SELECT   
+   thedate
+   ,CAST(CAST(MAX(CASE WHEN thistime = 0 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(10)) AS "00:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 30 THEN  M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(10)) AS "00:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 100 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "01:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 130 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "01:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 200 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "02:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 230 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "02:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 300 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "03:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 330 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "03:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 400 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "04:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 430 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "04:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 500 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "05:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 530 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "05:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 600 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "06:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 630 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "06:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 700 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "07:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 730 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "07:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 800 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "08:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 830 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "08:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 900 THEN M_FlowCtlTime/1000 END) AS  DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "09:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 930 THEN  M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "09:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1000 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9') AS VARCHAR(100)) AS "10:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1030 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "10:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1100 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "11:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1130 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "11:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1200 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "12:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1230 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "12:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1300 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "13:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1330 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "13:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1400 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "14:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1430 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "14:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1500 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "15:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1530 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "15:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1600 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "16:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1630 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "16:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1700 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "17:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1730 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "17:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1800 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "18:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1830 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "18:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1900 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "19:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 1930 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "19:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 2000 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "20:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 2030 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "20:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 2100 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "21:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 2130 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9'  ) AS VARCHAR(100)) AS "21:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 2200 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "22:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 2230 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "22:30"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 2300 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "23:00"
+   ,CAST(CAST(MAX(CASE WHEN thistime = 2330 THEN M_FlowCtlTime/1000 END) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS "23:30"
+   ,CAST(CAST(MAX(M_FlowCtlTime/1000) AS DECIMAL(10,2) FORMAT 'Z(20)9.9' ) AS VARCHAR(100)) AS MAX_FlowCtlTime        
+ FROM ${DBALOGV}.R302_FLOW_CTRL_DETAILS
+ GROUP BY 1 
+ ORDER BY 1;
+.IF ERRORCODE <> 0 THEN .QUIT 1
+.export reset;
+.quit;
+
+END
+
+if [ $? -ne 0 ]
+then
+  error "BTEQ script error:"
+  grep -i Failure "${PATH_LOGS}/${LOG_FILE}"
+  exit 1
+else
+  inf "Report Files prepared"
+fi
+
+MAX_PERM_SPACE=$(tail -n1 "${TMP}/${REPORT_FILE3}" | awk -F\~ '{print $4}')
+AVG_PERM_SPACE=$(tail -n1 "${TMP}/${REPORT_FILE3}" | awk -F\~ '{print $3}')
+SYS_SKEW_FACTOR=$(printf %.2f $(echo "scale=2; 100*(${MAX_PERM_SPACE}-${AVG_PERM_SPACE})/${MAX_PERM_SPACE}" | bc))
+echo "~~~~~System skew factor" >> "${TMP}/${REPORT_FILE3}"
+echo "~~~~~${SYS_SKEW_FACTOR} %" >> "${TMP}/${REPORT_FILE3}"
+
+echo "" >> "${TMP}/${REPORT_FILE2}"
+echo "" >> "${TMP}/${REPORT_FILE2}"
+echo "" >> "${TMP}/${REPORT_FILE2}"
+echo "" >> "${TMP}/${REPORT_FILE2}"
+cat "${TMP}/${REPORT_FILE3}" >> "${TMP}/${REPORT_FILE2}"
+
+inf "Few manipulations for AWT extract data"
+
+#weekly
+rm -rf "${TMP}/6_AWT_grid_graph_weekly.out"
+for D in {7..1}
+do
+  DAY=$(date --date="${REPORT_DAY} -${D} day" '+%Y-%m-%d')
+  grep -h "^${DAY}" "${TMP}/${REPORT_FILE8}" >> "${TMP}/6_AWT_grid_graph_weekly.out"
+done
+
+for DATE in $(awk -F\~ '{print $1}' "${TMP}/6_AWT_grid_graph_weekly.out" | sort -u)
+do
+  grep -h "^${DATE}" "${TMP}/6_AWT_grid_graph_weekly.out" > "${TMP}/6_AWT_grid_graph_weekly_${DATE}.out"
+  cp "${SCRIPTS_HOME}/report_302_transpose.py.bak" "${SCRIPTS_HOME}/report_302_transpose.py"
+  sed -i "s/\${DATE}/weekly_${DATE}/g" "${SCRIPTS_HOME}/report_302_transpose.py"
+  "${SCRIPTS_HOME}/report_302_transpose.py"
+#  sed -i '1d' 6_AWT_grid_graph_transpose_${DATE}.out
+  cat "${TMP}/6_AWT_grid_graph_transpose_weekly_${DATE}.out" >> "${TMP}/6_AWT_grid_graph_weekly_result.out"
+  echo >> "${TMP}/6_AWT_grid_graph_weekly_result.out"
+  echo >> "${TMP}/6_AWT_grid_graph_weekly_result.out"
+  rm -rf "${TMP}/6_AWT_grid_graph_weekly_${DATE}.out" "${TMP}/6_AWT_grid_graph_transpose_weekly_${DATE}.out"
+done
+
+#monthly
+rm -rf "${TMP}/6_AWT_grid_graph_monthly_pivot.out"
+"${SCRIPTS_HOME}/report_302_monthly.py"
+
+#daily presentation
+for DATE in $(awk -F\~ '{print $1}' "${TMP}/${REPORT_FILE8}" | sort -u)
+do
+  grep -h "^${DATE}" "${TMP}/${REPORT_FILE8}" > "${TMP}/6_AWT_grid_graph_${DATE}.out"
+  cp "${SCRIPTS_HOME}/report_302_transpose.py.bak" "${SCRIPTS_HOME}/report_302_transpose.py"
+  sed -i "s/\${DATE}/${DATE}/g" "${SCRIPTS_HOME}/report_302_transpose.py"
+  "${SCRIPTS_HOME}/report_302_transpose.py"
+#  sed -i '1d' "${TMP}/6_AWT_grid_graph_transpose_${DATE}.out"
+  cat "${TMP}/6_AWT_grid_graph_transpose_${DATE}.out" >> "${TMP}/6_AWT_grid_graph_result.out"
+  echo >> "${TMP}/6_AWT_grid_graph_result.out"
+  echo >> "${TMP}/6_AWT_grid_graph_result.out"
+  rm -rf "${TMP}/6_AWT_grid_graph_${DATE}.out" "${TMP}/6_AWT_grid_graph_transpose_${DATE}.out"
+done
+mv "${TMP}/6_AWT_grid_graph_result.out" "${TMP}/6_AWT_grid_graph_daily.out"
+sed -i 's/[[:space:]]*$//g' "${TMP}/6_AWT_grid_graph_daily.out"
+mv "${TMP}/6_AWT_grid_graph_monthly_pivot.out" "${TMP}/6_AWT_grid_graph_monthly.out"
+mv "${TMP}/6_AWT_grid_graph_weekly_result.out" "${TMP}/6_AWT_grid_graph_weekly.out"
+
+rm -rf "${TMP}/${REPORT_FILE8}"
+
+inf "Extract done"
+EMAIL_BODY_LAST=$(echo "")
