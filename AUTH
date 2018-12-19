@@ -1,0 +1,117 @@
+#!/bin/bash
+
+TDSYSTEM=${ENV^^}
+USE_RED_PROXY="NO"
+USE_UNITY="NO"
+if [ ! -z ${VPN_IP} ] || [ ! -z ${OFFICE_IP} ]
+then
+  USE_RED_PROXY="YES"
+else
+  USE_UNITY="YES"
+fi
+#actual AUTH
+if [[ ${ENV} == "PROD10" ]] || [[ ${ENV} == "PROD" ]]
+then
+  ENVM=$(echo ${ENV^^} | sed 's/..$//g')
+  TDW_USER_PROD=$(echo ${TD_USER} | sed "s/^/w_${ENVM}_/g")
+  TDW_USER_PROD10=$(echo ${TD_USER} | sed "s/^/w_${ENV}_/g")
+  if tdwallet list | grep -qi ${TDW_USER_PROD}
+  then
+    TDW_USER=$(echo ${TD_USER} | sed "s/^/w_${ENVM}_/g")
+  elif tdwallet list | grep -iq ${TDW_USER_PROD10}
+  then
+    TDW_USER=$(echo ${TD_USER} | sed "s/^/w_${ENV}_/g")
+  else
+    warn "There is no appropriate TDWallet entry for: ${YELLOW}${TD_USER}${WINE} for ENV ${YELLOW}${ENV}"
+    WALLET_ERROR="1"
+  fi
+    TD_SERVER="tdp10.ds.gen.local"
+  if [[ ${USE_RED_PROXY} == YES ]]
+  then
+    TD_SERVER="tdpt.ds.gen.local"
+  elif [[ ${USE_UNITY} == YES ]]
+  then
+    if [[ ${VERBOSE} == yes ]]
+    then
+      warn "UNITY conf should be here"
+    fi
+  fi
+elif [[ ${ENV} == "PROD11" ]]
+then
+  ENVM=$(echo ${ENV^^} | sed 's/..$//g')
+  TDW_USER_PROD=$(echo ${TD_USER} | sed "s/^/w_${ENVM}_/g")
+  TDW_USER_PROD11=$(echo ${TD_USER} | sed "s/^/w_${ENV}_/g")
+  if tdwallet list | grep -q ${TDW_USER_PROD}
+  then
+    TDW_USER=$(echo ${TD_USER} | sed "s/^/w_${ENVM}_/g")
+  elif tdwallet list | grep -iq ${TDW_USER_PROD11}
+  then
+    TDW_USER=$(echo ${TD_USER} | sed "s/^/w_${ENV}_/g")
+  else
+    warn "There is no appropriate TDWallet entry for: ${YELLOW}${TD_USER}${WINE} for ENV ${YELLOW}${ENV}"
+    WALLET_ERROR="1"
+  fi
+  TD_SERVER="tdp11.ds.gen.local"
+elif [[ ${ENV} == "DTA" ]]
+then
+  TDW_USER=$(echo ${TD_USER} | sed "s/^/w_${ENV}_/g")
+  if tdwallet list | grep -iq ${TDW_USER}
+  then
+    TDW_USER=$(echo ${TD_USER} | sed "s/^/w_${ENV}_/g")
+  else
+    warn "There is no appropriate TDWallet entry for: ${YELLOW}${TD_USER}${WINE} for ENV ${YELLOW}${ENV}"
+    WALLET_ERROR="1"
+  fi
+    TD_SERVER="tdd4.ds.gen.local"
+  if [[ ${USE_RED_PROXY} == YES ]]
+  then
+    TD_SERVER="tddt.ds.gen.local"
+  elif [[ ${USE_UNITY} == YES ]]
+  then
+    #only ONE proxy - but it MUST be GSS here!
+    if [[ ${VERBOSE} == yes ]]
+    then
+      warn "UNITY conf should be here"
+    fi
+  fi
+elif [[ ${ENV} =~ td0[[:digit:]] ]] || [[ ${ENV} =~ TD0[[:digit:]] ]]
+then
+  TDW_USER=$(echo ${TD_USER} | sed "s/^/w_${ENV}_/g")
+  if tdwallet list | grep -qi ${TDW_USER}
+  then
+    TDW_USER=$(echo ${TD_USER} | sed "s/^/w_${ENV}_/g")
+  else
+    warn "There is no appropriate TDWallet entry for: ${YELLOW}${TD_USER}${WINE} for ENV ${YELLOW}${ENV}"
+    WALLET_ERROR="1"
+  fi
+  TD_SERVER="${ENV}"
+fi
+
+if [[ ${TD_USER} == "SYS_META_USR" ]]
+then
+  TD_SOURCE="SYS_KPN_METAV"
+else
+  TD_SOURCE="DBC"
+fi
+
+TD_PASSWD="\$tdwallet(${TDW_USER})"
+
+if [[ ${VERBOSE} == yes ]]
+then
+  echo "${BLUE}
+  ENV=${YELLOW}${ENV}${BLUE}
+  ENVM=${YELLOW}${ENVM}${BLUE}
+  OFFICE_IP=${YELLOW}${OFFICE_IP}${BLUE}
+  VPN_IP=${YELLOW}${VPN_IP}${BLUE}
+  TD_PASSWD=${YELLOW}${TD_PASSWD}${BLUE}
+  TD_SERVER=${YELLOW}${TD_SERVER}${BLUE}
+  TD_SOURCE=${YELLOW}${TD_SOURCE}${BLUE}
+  TDSYSTEM=${YELLOW}${TDSYSTEM}${BLUE}
+  TDW_USER=${YELLOW}${TDW_USER}${BLUE}
+  TDW_USER_PROD=${YELLOW}${TDW_USER_PROD}${BLUE}
+  TDW_USER_PROD10=${YELLOW}${TDW_USER_PROD10}${BLUE}
+  TDW_USER_PROD11=${YELLOW}${TDW_USER_PROD11}${BLUE}
+  USE_RED_PROXY=${YELLOW}${USE_RED_PROXY}${BLUE}
+  USE_UNITY=${YELLOW}${USE_UNITY}${BLUE}
+  WALLET_ERROR=${YELLOW}${WALLET_ERROR}${YELLOW}${RESET}"
+fi

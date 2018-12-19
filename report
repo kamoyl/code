@@ -20,24 +20,27 @@ coloredlogs.install(level='DEBUG',milliseconds=True)
 
 start_time_template = str(datetime.datetime.now())
 start_time_template_seconds = time.time()
-#start_time_template_minutes = int(start_time_template[-12:-10])
 
 def usage():
   print(config.cyan + 'Usage:')
-  print(__file__ + ' [-o DIRECTORY] -h -v')
+  print(__file__ + ' [-s, --source_env=<PROD|PROD10|PROD11|DTA|host>] [-o, --output=DIRECTORY] [-d, --date=<DATE(YYYY-MM-DD)/WEEK_NR(XX)>] [-u, --user=TECH_USER] [-n, --report_number=REPORT_NUMBER] -v, --verbose -h, --help')
   print(config.cyan + 'This script is only template which by default has only few options, and none is mandatory\n')
   config.usage()
-  print(config.lime + '   -h' + config.blue + '   help')
+  print(config.lime + '   -h, --help' + config.blue + '      help')
 
 try:
-  opts, args = getopt.getopt(sys.argv[1:], "ho:v", ["help", "output="])
+  opts, args = getopt.getopt(sys.argv[1:], "hs:o:d:u:n:v", ["help", "source_env=", "output=", "date=", "user=", "report_number=", "verbose"])
 except getopt.GetoptError as err:
-  # print help information and exit:
   print str(err)  # will print something like "option -a not recognized"
   usage()
   sys.exit(2)
 output = None
 verbose = False
+user = None
+report_number = None
+report_date = None
+source_env = None
+env = None
 script_path = os.path.realpath(__file__)
 scripts_home = os.path.dirname(script_path)
 
@@ -47,10 +50,37 @@ for o, a in opts:
   elif o in ("-h", "--help"):
     usage()
     sys.exit()
+  elif o in ("-s", "--source_env"):
+    source_env = a
+    env = source_env
+    os.environ["ENV"] = env
   elif o in ("-o", "--output"):
     output = a
+  elif o in ("-d", "--date"):
+    report_date = a
+    os.environ["REPORT_DATE"] = report_date
+  elif o in ("-u", "--user"):
+    user = a
+  elif o in ("-n", "--report_number"):
+    report_number = a
+    os.environ["REPORT_NUMBER"] = report_number
   else:
     assert False, "unhandled option"
+
+if not env:
+  logger.error('Source environment MUST be set with: ' + config.cyan + '-s, --source_env=<PROD|PROD10|PROD11|DTA|host>')
+  exit()
+
+if env == 'PROD':
+  print('environment is: ' + env)
+
+if not report_number:
+  logger.error('Report number MUST be set with: ' + config.cyan + '-n, --report_number=')
+  exit()
+
+if not report_date:
+  report_date = datetime.datetime.now().strftime("%Y-%m-%d")
+  os.environ["REPORT_DATE"] = report_date
 
 if output:
   new_var = output
@@ -93,6 +123,53 @@ os.environ["TMP"] = new_tmp
 os.environ["VAR"] = new_var
 os.environ["LOG"] = new_log
 os.environ["SCRIPTS_HOME"] = scripts_home
+report_file1 = "7_Ampconfig.out" 
+report_file2 = "1_Diskspace.out"
+report_file3 = "2_Diskspace_trend.out"
+report_file4 = "8_cpu_Hourly_Details.out"
+report_file5 = "3_cpu_COD_busy_monthly.out"
+report_file6 = "9_cpu_Weekday_Details.out"
+report_file7 = "4_cpu_ImpactCPU_monthly.out"
+report_file8 = "6_AWT_grid_graph.out"
+report_file9 = "5_flow_control_heat_map.out"
+confluence_pageid = "62013301"
+confluence_history_pageid = "62013304"
+report_title = (report_number + " - capacity weekly report on: " + env)
+export_file_extension = (env + "_" + report_date + ".xlsx")
+log_file_extension = (config.current_timestamp + ".log")
+export_file = (report_number + "_Capacity_weekly_" + export_file_extension)
+log_file = (report_title + "_" + log_file_extension)
+
+if verbose == True:
+  logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
+  logger.debug('my default ip is: ' + config.blue + config.get_ip())
+  if config.office == 1:
+    logger.debug(config.blue + 'office_network is present')
+    office_ip = config.default_local_ip
+    os.environ["OFFICE_IP"] = office_ip
+  elif config.vpn == 1:
+    logger.debug(config.blue + 'vpn is present')
+    vpn_ip = config.default_local_ip
+    os.environ["VPN_IP"] = vpn_ip
+  else:
+    logger.debug(config.blue + 'not connected to the office')
+
+os.environ["REPORT_FILE1"] = report_file1
+os.environ["REPORT_FILE2"] = report_file2
+os.environ["REPORT_FILE3"] = report_file3
+os.environ["REPORT_FILE4"] = report_file4
+os.environ["REPORT_FILE5"] = report_file5
+os.environ["REPORT_FILE6"] = report_file6
+os.environ["REPORT_FILE7"] = report_file7
+os.environ["REPORT_FILE8"] = report_file8
+os.environ["REPORT_FILE9"] = report_file9
+os.environ["EXPORT_FILE"] = export_file
+os.environ["CONFLUENCE_PAGEID"] = confluence_pageid
+os.environ["CONFLUENCE_HISTORY_PAGEID"] = confluence_history_pageid
+os.environ["REPORT_TITLE"] = report_title
+os.environ["EXPORT_FILE_EXTENSION"] = export_file_extension
+os.environ["LOG_FILE_EXTENSION"] = log_file_extension
+os.environ["LOG_FILE"] = log_file
 
 start_time_bash_seconds = time.time()
 #os.system(scripts_home + '/template.bash')
@@ -100,15 +177,6 @@ subprocess.call(scripts_home + '/report.bteq', shell=True)
 end_time_bash_seconds = time.time()
 bash_seconds = [end_time_bash_seconds, -start_time_bash_seconds]
 
-if verbose == True:
-  logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
-  logger.debug('my default ip is: ' + config.blue + config.get_ip())
-  if config.office == 1:
-    logger.debug(config.blue + 'office_network is present')
-  elif config.vpn == 1:
-    logger.debug(config.blue + 'vpn is present')
-  else:
-    logger.debug(config.blue + 'not connected to the office')
 end_time_template_seconds = time.time()
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
 
@@ -121,4 +189,3 @@ time_python_seconds = sum(python_seconds)
 logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
 logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
 logger.debug(config.limon + "Python script run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
-logger.debug(config.limon + "Python script runtime is shorter then BASH: " + config.wine + "%.6s" % str(time_bash_seconds/time_python_seconds) + config.limon  + "x time")
