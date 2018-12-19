@@ -26,9 +26,7 @@ def usage():
   print(config.cyan + 'Usage:')
   print(__file__ + ' [-o DIRECTORY] -h -v')
   print(config.cyan + 'This script is only template which by default has only few options, and none is mandatory\n')
-  print(config.lime + '   -o' + config.blue + '   directory to which will go all LOGs and TMPs')
-  print(config.blue + '        default: ' + os.environ['HOME'] + '/var')
-  print(config.lime + '   -v' + config.blue + '   verbose')
+  config.usage()
   print(config.lime + '   -h' + config.blue + '   help')
 
 try:

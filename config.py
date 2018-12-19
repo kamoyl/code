@@ -35,6 +35,11 @@ os.environ["CURRENT_TIMESTAMP"] = current_timestamp
 office_network = '172.16.0.0/12'
 vpn_network = '10.65.64.0/18 129.189.0.0/16'
 
+def usage():
+  print(lime + '   -o' + blue + '   directory to which will go all LOGs and TMPs')
+  print(blue + '        default: ' + os.environ['HOME'] + '/var')
+  print(lime + '   -v' + blue + '   verbose')
+
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
