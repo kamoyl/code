@@ -173,7 +173,13 @@ os.environ["LOG_FILE"] = log_file
 
 start_time_bash_seconds = time.time()
 #os.system(scripts_home + '/template.bash')
-subprocess.call(scripts_home + '/report.bteq', shell=True)
+#subprocess.call(scripts_home + '/report.bteq', shell=True, stdout=subprocess.PIPE)
+try:
+  subprocess.check_output(scripts_home + '/report.bteq', shell=True, stderr = subprocess.PIPE)
+except:
+  logger.error("bteq script failed")
+  sys.exit(1)
+#print(subprocess.check_call(scripts_home + '/report.bteq', shell=True))
 end_time_bash_seconds = time.time()
 bash_seconds = [end_time_bash_seconds, -start_time_bash_seconds]
 
