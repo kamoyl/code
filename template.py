@@ -22,7 +22,6 @@ coloredlogs.install(level='DEBUG',milliseconds=True)
 start_time_template = str(datetime.datetime.now())
 start_time_template_seconds = float(start_time_template[-9:])
 start_time_template_minutes = int(start_time_template[-12:-10])
-logger.debug("Start time: " + config.blue + start_time_template)
 
 def usage():
   print(config.cyan + 'Usage:')
@@ -97,7 +96,18 @@ os.environ["TMP"] = new_tmp
 os.environ["VAR"] = new_var
 os.environ["LOG"] = new_log
 os.environ["SCRIPTS_HPOME"] = scripts_home
+
+start_time_bash = str(datetime.datetime.now())
+start_time_bash_seconds = float(start_time_bash[-9:])
+start_time_bash_minutes = int(start_time_bash[-12:-10])
+bash_seconds = [start_time_bash_seconds, -start_time_bash_seconds]
+bash_minutes = [start_time_bash_minutes, -start_time_bash_minutes]
 os.system(scripts_home + '/template.bash')
+end_time_bash = str(datetime.datetime.now())
+end_time_bash_seconds = float(end_time_bash[-9:])
+end_time_bash_minutes = int(end_time_bash[-12:-10])
+bash_seconds = [end_time_bash_seconds, -start_time_bash_seconds]
+bash_minutes = [end_time_bash_minutes, -start_time_bash_minutes]
 #xlsx_file_path = os.getenv('XLSX_FILE_PATH')
 
 if verbose == True:
@@ -109,10 +119,21 @@ end_time_template_seconds = float(end_time_template[-9:])
 end_time_template_minutes = int(end_time_template[-12:-10])
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
 template_minutes = [end_time_template_minutes, -start_time_template_minutes]
+
 time_template_seconds = sum(template_seconds)
 time_template_minutes = sum(template_minutes)
-logger.debug("End time: " + config.blue + end_time_template)
-logger.debug("Script run for:" + str(time_template_minutes) + " minutes, and: " + "%.3f" % time_template_seconds + " seconds")
+time_bash_seconds = sum(bash_seconds)
+time_bash_minutes = sum(bash_minutes)
+
+python_minutes = [time_template_minutes, -time_bash_minutes]
+python_seconds = [time_template_seconds, -time_bash_seconds]
+time_python_minutes = sum(python_minutes)
+time_python_seconds = sum(python_seconds)
+
+logger.debug("Run time: " + str(time_template_minutes) + " minutes, and: " + "%.4f" % time_template_seconds + " seconds")
+logger.debug("BASH script run for: " + str(time_bash_minutes) + " minutes, and: " + "%.4f" % time_bash_seconds + " seconds")
+logger.debug("Python script run for: " + str(time_python_minutes) + " minutes, and: " + "%.4f" % time_python_seconds + " seconds")
+
 
 exit()
 #logger.debug("this is a debugging message")
