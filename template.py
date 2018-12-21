@@ -7,7 +7,7 @@ import coloredlogs
 import os
 import tempfile
 import teradata
-#import datetime
+import datetime
 #import time
 
 from colorama import init,Fore, Back, Style
@@ -15,6 +15,14 @@ init(autoreset=True)
 from termcolor import colored
 
 import config
+
+logger = logging.getLogger(__name__)
+coloredlogs.install(level='DEBUG',milliseconds=True)
+
+start_time_template = str(datetime.datetime.now())
+start_time_template_seconds = float(start_time_template[-9:])
+start_time_template_minutes = int(start_time_template[-12:-10])
+logger.debug("Start time: " + config.blue + start_time_template)
 
 def usage():
   print(config.cyan + 'Usage:')
@@ -47,9 +55,6 @@ for o, a in opts:
     output = a
   else:
     assert False, "unhandled option"
-
-logger = logging.getLogger(__name__)
-coloredlogs.install(level='DEBUG',milliseconds=True)
 
 if output:
   new_var = output
@@ -91,11 +96,24 @@ else:
 os.environ["TMP"] = new_tmp
 os.environ["VAR"] = new_var
 os.environ["LOG"] = new_log
+os.environ["SCRIPTS_HPOME"] = scripts_home
 os.system(scripts_home + '/template.bash')
+#xlsx_file_path = os.getenv('XLSX_FILE_PATH')
 
 if verbose == True:
   logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
   logger.debug('my default ip is: ' + config.blue + config.get_ip())
+
+end_time_template = str(datetime.datetime.now())
+end_time_template_seconds = float(end_time_template[-9:])
+end_time_template_minutes = int(end_time_template[-12:-10])
+template_seconds = [end_time_template_seconds, -start_time_template_seconds]
+template_minutes = [end_time_template_minutes, -start_time_template_minutes]
+time_template_seconds = sum(template_seconds)
+time_template_minutes = sum(template_minutes)
+logger.debug("End time: " + config.blue + end_time_template)
+logger.debug("Script run for:" + str(time_template_minutes) + " minutes, and: " + "%.3f" % time_template_seconds + " seconds")
+
 exit()
 #logger.debug("this is a debugging message")
 #logger.info("this is an informational message")
