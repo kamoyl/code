@@ -13,10 +13,20 @@ cyan = '\x1b[38;2;000;255;255m'
 green = '\x1b[38;2;000;128;000m'
 yellow = '\x1b[38;2;255;255;000m'
 
+os.environ["WINE"] = wine
+os.environ["LIMON"] = limon
+os.environ["LIME"] = lime
+os.environ["RED"] = red
+os.environ["BLUE"] = blue
+os.environ["CYAN"] = cyan
+os.environ["GREEN"] = green
+os.environ["YELLOW"] = yellow
+
 current_directory = os.getcwd()
 user_home_dir = os.environ['HOME']
 
 current_timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H.%M.%S")
+os.environ["CURRENT_TIMESTAMP"] = current_timestamp
 koen_network = '172.16.0.0/12'
 vpn_network = '10.65.64.0/18 129.189.0.0/16'
 
