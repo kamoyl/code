@@ -410,6 +410,24 @@ then
   exit 1
 else
   inf "Report Files prepared"
+  sed -i 's/[[:space:]]*\~[[:space:]]*/\~/g' "${TMP}/${REPORT_FILE1}"
+  sed -i 's/[[:space:]]*\~[[:space:]]*/\~/g' "${TMP}/${REPORT_FILE2}"
+  sed -i 's/[[:space:]]*\~[[:space:]]*/\~/g' "${TMP}/${REPORT_FILE3}"
+  sed -i 's/[[:space:]]*\~[[:space:]]*/\~/g' "${TMP}/${REPORT_FILE4}"
+  sed -i 's/[[:space:]]*\~[[:space:]]*/\~/g' "${TMP}/${REPORT_FILE5}"
+  sed -i 's/[[:space:]]*\~[[:space:]]*/\~/g' "${TMP}/${REPORT_FILE6}"
+  sed -i 's/[[:space:]]*\~[[:space:]]*/\~/g' "${TMP}/${REPORT_FILE7}"
+  sed -i 's/[[:space:]]*\~[[:space:]]*/\~/g' "${TMP}/${REPORT_FILE8}"
+  sed -i 's/[[:space:]]*\~[[:space:]]*/\~/g' "${TMP}/${REPORT_FILE9}"
+  sed -i 's/^[[:space:]]*//g' "${TMP}/${REPORT_FILE1}"
+  sed -i 's/^[[:space:]]*//g' "${TMP}/${REPORT_FILE2}"
+  sed -i 's/^[[:space:]]*//g' "${TMP}/${REPORT_FILE3}"
+  sed -i 's/^[[:space:]]*//g' "${TMP}/${REPORT_FILE4}"
+  sed -i 's/^[[:space:]]*//g' "${TMP}/${REPORT_FILE5}"
+  sed -i 's/^[[:space:]]*//g' "${TMP}/${REPORT_FILE6}"
+  sed -i 's/^[[:space:]]*//g' "${TMP}/${REPORT_FILE7}"
+  sed -i 's/^[[:space:]]*//g' "${TMP}/${REPORT_FILE8}"
+  sed -i 's/^[[:space:]]*//g' "${TMP}/${REPORT_FILE9}"
 fi
 
 END_BTEQ_TIME=$(date +%s.%4N)
