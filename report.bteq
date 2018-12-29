@@ -60,7 +60,7 @@ debug "$0:
 END_BASH_TIME=$(date +%s.%4N)
 export BASH_RUNTIME=$(echo "scale=4; x=(${END_BASH_TIME} - ${START_BASH_TIME}); if(x<1) print 0; x" | bc)
 inf "BASH script run for: ${WINE}${BASH_RUNTIME}${CYAN} seconds"
-exit 0
+
 START_BTEQ_TIME=$(date +%s.%4N)
 bteq <<-END > "${LOG}/${LOG_FILE}" 2>&1
 .LOGON ${TD_SERVER}/${TD_USER},${TD_PASSWD}

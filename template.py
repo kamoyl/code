@@ -183,11 +183,28 @@ except:
 end_time_bash_seconds = time.time()
 bash_seconds = [end_time_bash_seconds, -start_time_bash_seconds]
 
-with open(new_tmp + '/' + report_file3, "r") as report_file3_open:
+with open(new_tmp + '/' + report_file3, "a+b") as report_file3_open:
   row_list = report_file3_open.readlines()[1:2]
   max_perm = float(row_list[0].split('~')[4])
   avg_perm = float(row_list[0].split('~')[3])
   skew_factor = (100*(max_perm - avg_perm)/max_perm)
+  report_file3_open.write('~~~~~System skew factor\n')
+  report_file3_open.write('~~~~~' + str(skew_factor) + ' %\n')
+
+with open(new_tmp + '/' + report_file2, "a+b") as report_file2_open:
+  with open(new_tmp + '/' + report_file3, "r") as report_file3_open:
+    report_file3_read = report_file3_open.read()
+    report_file2_open.write('\n')
+    report_file2_open.write('\n')
+    report_file2_open.write('\n')
+    report_file2_open.write('\n')
+    report_file2_open.write(report_file3_read)
+
+#echo "" >> "${TMP}/${REPORT_FILE2}"
+#echo "" >> "${TMP}/${REPORT_FILE2}"
+#echo "" >> "${TMP}/${REPORT_FILE2}"
+#echo "" >> "${TMP}/${REPORT_FILE2}"
+#cat "${TMP}/${REPORT_FILE3}" >> "${TMP}/${REPORT_FILE2}"
 
 end_time_template_seconds = time.time()
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
