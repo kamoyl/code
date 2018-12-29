@@ -60,7 +60,7 @@ debug "$0:
 END_BASH_TIME=$(date +%s.%4N)
 export BASH_RUNTIME=$(echo "scale=4; x=(${END_BASH_TIME} - ${START_BASH_TIME}); if(x<1) print 0; x" | bc)
 inf "BASH script run for: ${WINE}${BASH_RUNTIME}${CYAN} seconds"
-
+exit 0
 START_BTEQ_TIME=$(date +%s.%4N)
 bteq <<-END > "${LOG}/${LOG_FILE}" 2>&1
 .LOGON ${TD_SERVER}/${TD_USER},${TD_PASSWD}
@@ -74,17 +74,9 @@ bteq <<-END > "${LOG}/${LOG_FILE}" 2>&1
 .SET ECHOREQ ON ;
   .SET ENCRYPTION ON ;
 
---************************************************************************************
---> Report 302 flow call 
---************************************************************************************
 CALL ${DBALOGV}.SP_REPORTS(${REPORT_NUMBER}, '${REPORT_DATE}', RC);
 .IF ERRORCODE <> 0 THEN .QUIT 1
 
-/*
-AMPCONFIG
-This query shows all TD AMP worker nodes in the system. Just FYI 
-Shows current  COD settings.
-*/
 .os rm -rf "${TMP}/${REPORT_FILE1}";
 .EXPORT report file = "${TMP}/${REPORT_FILE1}";
 
@@ -104,17 +96,6 @@ ORDER BY nodeid;
 
 .EXPORT  RESET;
 
-/*
-DISKSPACE
-We analyse volume of data.
-Teradata rough number advocated spoolreserve = 30% of maxperm.
-Hence remaining 70 percent is customer usable
-Currently used
-Query shows 14 days history currentperm, maxperm. There is NO COD for diskspace.
-Fairly simple , stable list. Maybe a peak for migration. 
-Please note we have no historic data on individual amp currentperm, to isolate historic ampskew.
-*/
-
 .os rm -rf "${TMP}/${REPORT_FILE2}";
 .EXPORT report file = "${TMP}/${REPORT_FILE2}";
 
@@ -130,12 +111,6 @@ ORDER BY thedate;
 .IF ERRORCODE <> 0 THEN .QUIT 1
 
 .EXPORT  RESET;
-
-/*
-SKEWENESS
-If the system is highly skewed, we have a high Impactperm
-This is the loss due to skew, systemwide. On sum(databaselevel) it might be higher.
-*/
 
 .os rm -rf "${TMP}/${REPORT_FILE3}";
 .EXPORT report file = "${TMP}/${REPORT_FILE3}";
@@ -155,33 +130,6 @@ FROM
 	) a;
 .IF ERRORCODE <> 0 THEN .QUIT 1
 .EXPORT  RESET;
-
-/*
-here comes the data over past 5 weeks system usage, per hour. 24* 35 records.
-This volatile holds CPU and IO data, for reporting later-on. Granularity:
-military date, avoiding formatting issues
-
-picked up for group by preparation, dependent from date,
-
-time expressed as hour (truncated to)
-ncpus is basically nbr_chips * nbr_cores * 2 (hyperthreading). Times 600 since 10 minute intervals.
-here we lift the CPUCOD , need to div by 10 to get percentage (upper limit = 1000)
-This is the limit for CPU busy under COD
-What's actually consumed. This can be slightly higher than the limit. Consider this a present :-)
-Hence remaining from limit
-
-In case you want to see the waitIO (high = meaning: busy disk)
-real idle: not even waiting for disks to return.
-IOCOD is a number with max 100, no need to divide by 10 this time  :-)
-
-CPU busy percentage WITHOUT COD
-CPU busy percentage UNDER COD. This can be slightly higher than 100!
-Iowait as percentage of total available CPU.
-
-make this Xweeks full, now set @ 5
-
-CPU Hourly details
-*/
 
 .os rm -rf "${TMP}/${REPORT_FILE4}";
 .EXPORT report file = "${TMP}/${REPORT_FILE4}";
@@ -212,12 +160,6 @@ SELECT
  FROM ${DBALOGV}.R302_HOURLY_SPMA ORDER BY 1,2,3;
 .IF ERRORCODE <> 0 THEN .QUIT 1
 .EXPORT  RESET;
-
-/*
-CPUCODBusy hour_Day
-this is the combined hourly/daily view, covering at least 1 month of history
-Pivot within SQL, CPU use (under COD) only.
-*/
 
 .os rm -rf "${TMP}/${REPORT_FILE5}";
 .EXPORT report file = "${TMP}/${REPORT_FILE5}";
@@ -257,10 +199,6 @@ ORDER BY int_date;
 .IF ERRORCODE <> 0 THEN .QUIT 1
 .EXPORT  RESET;
 
-/*
-CPU Weekday details
-*/
-
 .os rm -rf "${TMP}/${REPORT_FILE6}";
 .EXPORT report file = "${TMP}/${REPORT_FILE6}";
 
@@ -278,10 +216,6 @@ ORDER BY 1,2;
 .IF ERRORCODE <> 0 THEN .QUIT 1
 
 .EXPORT  RESET;
-
-/*
-CPUCODBusy Weekday
-*/
 
 .os rm -rf "${TMP}/${REPORT_FILE7}";
 .EXPORT report file = "${TMP}/${REPORT_FILE7}";
@@ -319,9 +253,6 @@ ORDER BY 1;
 .IF ERRORCODE <> 0 THEN .QUIT 1
 .EXPORT RESET
 
-
-/* AWT Grid Graph*/
-
 .os rm -rf "${TMP}/${REPORT_FILE8}";
 .EXPORT report file = "${TMP}/${REPORT_FILE8}";
 
@@ -340,8 +271,6 @@ ORDER BY 1,2;
 
 .os rm -rf "${TMP}/${REPORT_FILE9}";
 .EXPORT report file = "${TMP}/${REPORT_FILE9}";
-
-/* Flow Control Heat Map*/
 
 SELECT   
    thedate

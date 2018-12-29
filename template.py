@@ -8,6 +8,7 @@ import os
 import datetime
 import subprocess
 import time
+import pandas
 
 from colorama import init,Fore, Back, Style
 init(autoreset=True)
@@ -179,9 +180,14 @@ try:
 except:
   logger.error("bteq script failed")
   sys.exit(1)
-#print(subprocess.check_call(scripts_home + '/report.bteq', shell=True))
 end_time_bash_seconds = time.time()
 bash_seconds = [end_time_bash_seconds, -start_time_bash_seconds]
+
+with open(new_tmp + '/' + report_file3, "r") as report_file3_open:
+  row_list = report_file3_open.readlines()[1:2]
+  max_perm = float(row_list[0].split('~')[4])
+  avg_perm = float(row_list[0].split('~')[3])
+  skew_factor = (100*(max_perm - avg_perm)/max_perm)
 
 end_time_template_seconds = time.time()
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
