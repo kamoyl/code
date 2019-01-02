@@ -10,6 +10,8 @@ import subprocess
 import time
 import pandas
 import re
+import gzip
+import shutil
 
 from colorama import init,Fore, Back, Style
 init(autoreset=True)
@@ -179,6 +181,7 @@ start_time_bash_seconds = time.time()
 #subprocess.call(scripts_home + '/report.bteq', shell=True, stdout=subprocess.PIPE)
 try:
   subprocess.check_call(scripts_home + '/report.bteq', shell=False, stdout = subprocess.PIPE)
+  logger.debug('LOG file of running BTEQ: ' + new_log + log_file)
 except:
   logger.error("bteq script failed")
   sys.exit(1)
@@ -230,7 +233,16 @@ for report_file in range(0, report_output_list_len):
   archive_file_extension = ("_" + env + "_" + config.current_timestamp + ".outdone")
   new_name = str(report_output_list[report_file])[:-4] + archive_file_extension
   os.rename(new_tmp + '/' + report_output_list[report_file], new_tmp + '/' + new_name)
+  with open(new_tmp + '/' + new_name, 'rb') as new_name_in:
+    with gzip.open(new_tmp + '/' + new_name + '.gz', 'wb') as new_name_out:
+      shutil.copyfileobj(new_name_in, new_name_out)
+      os.remove(new_tmp + '/' + new_name)
 
+with open(new_log + '/' + log_file, 'rb') as new_name_in:
+  with gzip.open(new_log + '/' + log_file + '.gz', 'wb') as new_name_out:
+    shutil.copyfileobj(new_name_in, new_name_out)
+    os.remove(new_log + '/' + log_file)
+  
 logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
 logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
 logger.debug(config.limon + "Python script run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
