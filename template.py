@@ -9,6 +9,7 @@ import datetime
 import subprocess
 import time
 import pandas
+import re
 
 from colorama import init,Fore, Back, Style
 init(autoreset=True)
@@ -133,6 +134,7 @@ report_file6 = "9_cpu_Weekday_Details.out"
 report_file7 = "4_cpu_ImpactCPU_monthly.out"
 report_file8 = "6_AWT_grid_graph.out"
 report_file9 = "5_flow_control_heat_map.out"
+report_file10 = "6_AWT_grid_graph_weekly.out"
 confluence_pageid = "62013301"
 confluence_history_pageid = "62013304"
 report_title = (report_number + " - capacity weekly report on: " + env)
@@ -200,11 +202,17 @@ with open(new_tmp + '/' + report_file2, "a+b") as report_file2_open:
     report_file2_open.write('\n')
     report_file2_open.write(report_file3_read)
 
-#echo "" >> "${TMP}/${REPORT_FILE2}"
-#echo "" >> "${TMP}/${REPORT_FILE2}"
-#echo "" >> "${TMP}/${REPORT_FILE2}"
-#echo "" >> "${TMP}/${REPORT_FILE2}"
-#cat "${TMP}/${REPORT_FILE3}" >> "${TMP}/${REPORT_FILE2}"
+logger.debug("Few manipulations for AWT extract data")
+
+with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
+  with open(new_tmp + '/' + report_file10, "a+b") as report_file10_open:
+    for day_week_range in range(1,8):
+      date_week = str(datetime.datetime.now() - datetime.timedelta(days=day_week_range))[:10]
+      print(date_week)
+      for week_line in report_file8_open:
+        #print('date_week: ' + date_week + ', week_line: ' + week_line)
+        if date_week in week_line:
+          report_file10_open.write(week_line)
 
 end_time_template_seconds = time.time()
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
@@ -214,6 +222,14 @@ time_bash_seconds = sum(bash_seconds)
 
 python_seconds = [time_template_seconds, -time_bash_seconds]
 time_python_seconds = sum(python_seconds)
+
+logger.debug("Archiving all output files")
+report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file8, report_file9, report_file10]
+report_output_list_len = len(report_output_list)
+for report_file in range(0, report_output_list_len):
+  archive_file_extension = ("_" + env + "_" + config.current_timestamp + ".outdone")
+  new_name = str(report_output_list[report_file])[:-4] + archive_file_extension
+  os.rename(new_tmp + '/' + report_output_list[report_file], new_tmp + '/' + new_name)
 
 logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
 logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
