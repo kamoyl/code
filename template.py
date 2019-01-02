@@ -178,9 +178,8 @@ os.environ["LOG_FILE"] = log_file
 
 start_time_bash_seconds = time.time()
 #os.system(scripts_home + '/template.bash')
-#subprocess.call(scripts_home + '/report.bteq', shell=True, stdout=subprocess.PIPE)
 try:
-#  subprocess.check_call(scripts_home + '/report.bteq', shell=False, stdout = subprocess.PIPE)
+  subprocess.check_call(scripts_home + '/report.bteq', shell=False, stdout = subprocess.PIPE)
   logger.debug('LOG file of running BTEQ: ' + new_log + log_file)
 except:
   logger.error("bteq script failed")
@@ -225,15 +224,6 @@ time_bash_seconds = sum(bash_seconds)
 
 python_seconds = [time_template_seconds, -time_bash_seconds]
 time_python_seconds = sum(python_seconds)
-
-#to delete
-logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
-logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
-logger.debug(config.limon + "Python script run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
-exit()
-#to delete
-
-
 
 logger.debug("Archiving all output files")
 report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file8, report_file9, report_file10]
