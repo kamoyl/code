@@ -12,6 +12,13 @@ import pandas
 import re
 import gzip
 import shutil
+#import numpy
+import csv
+import glob
+try:
+  from StringIO import StringIO
+except ImportError:
+  from io import StringIO
 
 from colorama import init,Fore, Back, Style
 init(autoreset=True)
@@ -139,6 +146,7 @@ report_file7 = "4_cpu_ImpactCPU_monthly.out"
 report_file8 = "6_AWT_grid_graph.out"
 report_file9 = "5_flow_control_heat_map.out"
 report_file10 = "6_AWT_grid_graph_weekly"
+report_file11 = "6_AWT_grid_graph_transpose_weekly"
 confluence_pageid = "62013301"
 confluence_history_pageid = "62013304"
 report_title = (report_number + " - capacity weekly report on: " + env)
@@ -182,7 +190,7 @@ start_time_bash_seconds = time.time()
 #os.system(scripts_home + '/template.bash')
 try:
   subprocess.check_call(scripts_home + '/report.bteq', shell=False, stdout = subprocess.PIPE)
-  logger.debug('LOG file of running BTEQ: ' + new_log + log_file)
+  logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file)
 except:
   logger.error("bteq script failed")
   sys.exit(1)
@@ -209,20 +217,25 @@ with open(new_tmp + '/' + report_file2, "a+b") as report_file2_open:
 logger.debug("Few manipulations for AWT extract data")
 
 report_file8_open = open(new_tmp + '/' + report_file8, "r")
-#report_file10_open = open(new_tmp + '/' + report_file10, "a+b")
-
 for day_week_range in range(1,8):
   #date_week = str(datetime.datetime.now() - datetime.timedelta(days=day_week_range))[:10]
   date_week = str(report_date_long - datetime.timedelta(days=day_week_range))[:10]
-  print(date_week)
   report_file8_open.seek(0,0)
+  week_prep_variable = ""
   for week_line in report_file8_open:
     if date_week in week_line:
-      with open(new_tmp + '/' + report_file10 + '_' + date_week + '.out', "a+b") as week_prep_file:
-        week_prep_file.write(week_line)
-      #report_file10_open.write(week_line)
-      #6_AWT_grid_graph_weekly_${DATE}.out
-      #report_file10 = "6_AWT_grid_graph_weekly.out"
+      #with open(new_tmp + '/' + report_file10 + '_' + date_week + '.out', "a+b") as week_prep_file:
+      #  week_prep_file.write(week_line)
+      week_prep_variable = week_prep_variable + week_line
+  #with open(new_tmp + '/' + report_file10 + '_' + date_week + '.out', "a+b") as week_prep_file: 
+  #  week_prep_file.write(week_prep_variable)
+  #df_AWT_grid_graph=pandas.read_csv(new_tmp + '/' + report_file10 + '_' + date_week + '.out', delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+  week_prep_variable_fakefile = StringIO(week_prep_variable)
+  df_AWT_grid_graph=pandas.read_csv(week_prep_variable_fakefile, delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+  weekly_transpose = df_AWT_grid_graph.set_index('TheDate').T
+  weekly_transpose.to_csv(new_tmp + '/' + report_file11 + '_' + date_week + '.out',index=True,header=1,sep='~')
+#  os.remove(new_tmp + '/' + report_file10 + '_' + date_week + '.out')
+report_file8_open.close()
 
 end_time_template_seconds = time.time()
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
