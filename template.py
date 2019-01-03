@@ -12,7 +12,9 @@ import pandas
 import re
 import gzip
 import shutil
-#import numpy
+import multiprocessing as mp
+import threading
+import numpy
 import csv
 import glob
 try:
@@ -145,8 +147,9 @@ report_file6 = "9_cpu_Weekday_Details.out"
 report_file7 = "4_cpu_ImpactCPU_monthly.out"
 report_file8 = "6_AWT_grid_graph.out"
 report_file9 = "5_flow_control_heat_map.out"
-report_file10 = "6_AWT_grid_graph_weekly"
-report_file11 = "6_AWT_grid_graph_transpose_weekly"
+report_file10 = "6_AWT_grid_graph_weekly.out"
+report_file11 = "6_AWT_grid_graph_monthly.out"
+report_file12 = "6_AWT_grid_graph_daily"
 confluence_pageid = "62013301"
 confluence_history_pageid = "62013304"
 report_title = (report_number + " - capacity weekly report on: " + env)
@@ -189,7 +192,7 @@ os.environ["LOG_FILE"] = log_file
 start_time_bash_seconds = time.time()
 #os.system(scripts_home + '/template.bash')
 try:
-  subprocess.check_call(scripts_home + '/report.bteq', shell=False, stdout = subprocess.PIPE)
+  subprocess.check_call(scripts_home + '/bteq/report.bteq', shell=False, stdout = subprocess.PIPE)
   logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file)
 except:
   logger.error("bteq script failed")
@@ -215,27 +218,64 @@ with open(new_tmp + '/' + report_file2, "a+b") as report_file2_open:
     report_file2_open.write(report_file3_read)
 
 logger.debug("Few manipulations for AWT extract data")
+def AWTweekly(title):
+  logger.debug(config.wine + 'start: ' + config.yellow + title)
+  with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
+    for day_week_range in range(1,8):
+      #date_week = str(datetime.datetime.now() - datetime.timedelta(days=day_week_range))[:10]
+      date_week = str(report_date_long - datetime.timedelta(days=day_week_range))[:10]
+      report_file8_open.seek(0,0)
+      week_prep_variable = ""
+      for week_line in report_file8_open:
+        if date_week in week_line:
+          week_prep_variable = week_prep_variable + week_line
+      week_prep_variable_fakefile = StringIO(week_prep_variable)
+      df_AWT_grid_graph_weekly=pandas.read_csv(week_prep_variable_fakefile, delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+      weekly_transpose = df_AWT_grid_graph_weekly.set_index('TheDate').T
+      with open(new_tmp + '/' + report_file10, "a+b") as weekly_transpose_result:
+        weekly_transpose.to_csv(weekly_transpose_result,index=True,header=1,sep='~')
+        weekly_transpose_result.write('\n\n')
+  logger.debug(config.wine + 'end: ' + config.yellow + title)
 
-report_file8_open = open(new_tmp + '/' + report_file8, "r")
-for day_week_range in range(1,8):
-  #date_week = str(datetime.datetime.now() - datetime.timedelta(days=day_week_range))[:10]
-  date_week = str(report_date_long - datetime.timedelta(days=day_week_range))[:10]
-  report_file8_open.seek(0,0)
-  week_prep_variable = ""
-  for week_line in report_file8_open:
-    if date_week in week_line:
-      #with open(new_tmp + '/' + report_file10 + '_' + date_week + '.out', "a+b") as week_prep_file:
-      #  week_prep_file.write(week_line)
-      week_prep_variable = week_prep_variable + week_line
-  #with open(new_tmp + '/' + report_file10 + '_' + date_week + '.out', "a+b") as week_prep_file: 
-  #  week_prep_file.write(week_prep_variable)
-  #df_AWT_grid_graph=pandas.read_csv(new_tmp + '/' + report_file10 + '_' + date_week + '.out', delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
-  week_prep_variable_fakefile = StringIO(week_prep_variable)
-  df_AWT_grid_graph=pandas.read_csv(week_prep_variable_fakefile, delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
-  weekly_transpose = df_AWT_grid_graph.set_index('TheDate').T
-  weekly_transpose.to_csv(new_tmp + '/' + report_file11 + '_' + date_week + '.out',index=True,header=1,sep='~')
-#  os.remove(new_tmp + '/' + report_file10 + '_' + date_week + '.out')
-report_file8_open.close()
+def AWTmonthly(title):
+  logger.debug(config.wine + 'start: ' + config.yellow + title)
+  with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
+    df_AWT_grid_graph_monthly=pandas.read_csv(new_tmp + '/' + report_file8, "r",delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+    df_AWT_grid_graph_monthly_pivot = df_AWT_grid_graph_monthly.pivot_table(index='TheDate', columns='thistime', values=['WD_ETL','WD_OTHER'], aggfunc=numpy.sum)
+    df_AWT_grid_graph_monthly_pivot.to_csv(new_tmp + '/' + report_file11,index=True,header=1,sep='~')
+  logger.debug(config.wine + 'end: ' + config.yellow + title)
+
+def AWTdaily(title):
+  logger.debug(config.wine + 'start: ' + config.yellow + title)
+  with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
+    next(report_file8_open)
+    for day_line in report_file8_open:
+      day_date = day_line.split('~')[0]
+      if day_date in day_line:
+        daily_file = open(new_tmp + '/' + report_file12 + '_' + day_date + '.out', "a+b")
+        daily_file.write(day_line)
+    df_AWT_grid_graph=pandas.read_csv(new_tmp + '/' + report_file12 + '_' + day_date + '.out',delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+    daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
+    with open(new_tmp + '/' + report_file12 + '.out', "a+b") as daily_transpose_result:
+      daily_transpose.to_csv(daily_transpose_result,index=True,header=1,sep='~') 
+      daily_transpose_result.write('\n\n')
+  logger.debug(config.wine + 'end: ' + config.yellow + title)
+
+
+if __name__ == '__main__':
+  w = mp.Process(target=AWTweekly, args=('AWT weekly spawned',))
+  m = mp.Process(target=AWTmonthly, args=('AWT monthly spawned',))
+  d = mp.Process(target=AWTdaily, args=('AWT daily spawned',))
+
+  #w = threading.Thread(target=AWTweekly, args=('AWT weekly spawned',))
+  #m = threading.Thread(target=AWTmonthly, args=('AWT monthly spawned',))
+  #d = threading.Thread(target=AWTdaily, args=('AWT monthly spawned',))
+  w.start()
+  m.start()
+  d.start()
+  m.join()
+  w.join()
+  d.join()
 
 end_time_template_seconds = time.time()
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
@@ -246,22 +286,23 @@ time_bash_seconds = sum(bash_seconds)
 python_seconds = [time_template_seconds, -time_bash_seconds]
 time_python_seconds = sum(python_seconds)
 
-logger.debug("Archiving all output files")
-report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file8, report_file9]
-report_output_list_len = len(report_output_list)
-for report_file in range(0, report_output_list_len):
-  archive_file_extension = ("_" + env + "_" + config.current_timestamp + ".outdone")
-  new_name = str(report_output_list[report_file])[:-4] + archive_file_extension
-  os.rename(new_tmp + '/' + report_output_list[report_file], new_tmp + '/' + new_name)
-  with open(new_tmp + '/' + new_name, 'rb') as new_name_in:
-    with gzip.open(new_tmp + '/' + new_name + '.gz', 'wb') as new_name_out:
-      shutil.copyfileobj(new_name_in, new_name_out)
-      os.remove(new_tmp + '/' + new_name)
+def archive(title):
+  logger.debug("Archiving all output files")
+  report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file8, report_file9, report_file10, report_file11]
+  report_output_list_len = len(report_output_list)
+  for report_file in range(0, report_output_list_len):
+    archive_file_extension = ("_" + env + "_" + config.current_timestamp + ".outdone")
+    new_name = str(report_output_list[report_file])[:-4] + archive_file_extension
+    os.rename(new_tmp + '/' + report_output_list[report_file], new_tmp + '/' + new_name)
+    with open(new_tmp + '/' + new_name, 'rb') as new_name_in:
+      with gzip.open(new_tmp + '/' + new_name + '.gz', 'wb') as new_name_out:
+        shutil.copyfileobj(new_name_in, new_name_out)
+        os.remove(new_tmp + '/' + new_name)
 
-with open(new_log + '/' + log_file, 'rb') as new_name_in:
-  with gzip.open(new_log + '/' + log_file + '.gz', 'wb') as new_name_out:
-    shutil.copyfileobj(new_name_in, new_name_out)
-    os.remove(new_log + '/' + log_file)
+  with open(new_log + '/' + log_file, 'rb') as new_name_in:
+    with gzip.open(new_log + '/' + log_file + '.gz', 'wb') as new_name_out:
+      shutil.copyfileobj(new_name_in, new_name_out)
+      os.remove(new_log + '/' + log_file)
   
 logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
 logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
