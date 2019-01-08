@@ -255,6 +255,7 @@ def AWTdaily(title):
       day_date_list.append(day_date)
     days_list_set = set(day_date_list)
     days_list = list(days_list_set)
+    days_amount = len(days_list_set)
     for day in days_list:
       report_file8_open.seek(0,0)
       day_line_string = ""
