@@ -261,11 +261,10 @@ def AWTdaily(title):
       for day_line in report_file8_open:
         if day in day_line:
           day_line_string = day_line_string + day_line
-      with open(new_tmp + '/' + report_file12 + '_' + day + '.out', "a+b") as daily_file:
-        daily_file.write(day_line_string)
-  #df_AWT_grid_graph=pandas.read_csv(new_tmp + '/' + report_file12 + '_' + day_date + '.out',delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
-  #daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
-  #daily_transpose.to_csv(new_tmp + '/' + report_file12 + '_transpose_' + day_date + '.out',index=True,header=1,sep='~')
+      daily_file = StringIO(day_line_string)
+      df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+      daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
+      daily_transpose.to_csv(new_tmp + '/' + report_file12 + '_transpose_' + day + '.out',index=True,header=1,sep='~')
   #os.remove(new_tmp + '/' + report_file12 + '_' + day_date + '.out')
     
   logger.debug(config.wine + 'end: ' + config.yellow + title)
