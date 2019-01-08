@@ -249,22 +249,20 @@ def AWTdaily(title):
   logger.debug(config.wine + 'start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
     next(report_file8_open)
-    day_date_list =[ ]
+    day_date_list = [ ]
     for day_line in report_file8_open:
       day_date = day_line.split('~')[0]
       day_date_list.append(day_date)
     days_list_set = set(day_date_list)
     days_list = list(days_list_set)
-    report_file8_open.seek(0,0)
-    for day_line in report_file8_open:
-      for day in days_list:
+    for day in days_list:
+      report_file8_open.seek(0,0)
+      day_line_string = ""
+      for day_line in report_file8_open:
         if day in day_line:
-          daily_file = open(new_tmp + '/' + report_file12 + '_' + day + '.out', "a+b")
-          daily_file.write(day_line)
-    #  with open(new_tmp + '/' + report_file12 + '_' + day_date + '.out', "a+b") as daily_file:
-    #    daily_file.write(day_line_string)
-        #daily_file = open(new_tmp + '/' + report_file12 + '_' + day_date + '.out', "a+b")
-        #daily_file.write(day_line)
+          day_line_string = day_line_string + day_line
+      with open(new_tmp + '/' + report_file12 + '_' + day + '.out', "a+b") as daily_file:
+        daily_file.write(day_line_string)
   #df_AWT_grid_graph=pandas.read_csv(new_tmp + '/' + report_file12 + '_' + day_date + '.out',delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
   #daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
   #daily_transpose.to_csv(new_tmp + '/' + report_file12 + '_transpose_' + day_date + '.out',index=True,header=1,sep='~')
