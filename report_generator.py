@@ -17,8 +17,8 @@ import multiprocessing as mp
 import threading
 import numpy
 import csv
-import glob
-#import concurrent.futures
+#import glob
+from joblib import Parallel, delayed
 from xlsxwriter import Workbook
 from xlsxwriter.utility import xl_rowcol_to_cell
 
@@ -38,15 +38,19 @@ import config
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG',milliseconds=True)
 
-start_time_template = str(datetime.datetime.now())
 start_time_template_seconds = time.time()
 
 def usage():
-  print(config.cyan + 'Usage:')
-  print(__file__ + ' [-s, --source_env=<PROD|PROD10|PROD11|DTA|host>] [-o, --output=DIRECTORY] [-d, --date=<DATE(YYYY-MM-DD)/WEEK_NR(XX)>] [-u, --user=TECH_USER] [-n, --report_number=REPORT_NUMBER] -v, --verbose -h, --help')
-  print(config.cyan + 'This script is only template which by default has only few options, and none is mandatory\n')
+  print(config.cyan + 'Usage:\n\n')
+  print(config.cyan + 'This script manages all Teradata reports, creates excel sheets, manage confluence and Jira\n\n')
+  print(__file__ + '\n' + '                [-s, --source_env=' + config.green + '<PROD|PROD10|PROD11|DTA|host>' + config.cyan + ']\n' 
+                        '                [-d, --date=' + config.green + '<DATE(YYYY-MM-DD)/WEEK_NR(XX)>' + config.cyan + ']\n' + 
+                        '                [-u, --user=' + config.green + 'TECH_USER' + config.cyan + ']\n' +  
+                        '                [-n, --report_number=' + config.green + 'REPORT_NUMBER' + config.cyan + ']\n\n' +  
+                        '                [-o, --output=' + config.green + 'DIRECTORY' + config.cyan + ']\n' +
+                        '                [-v, --verbose\n' +  
+                        '                [-h, --help\n')
   config.usage()
-  print(config.lime + '   -h, --help' + config.blue + '      help')
 
 try:
   opts, args = getopt.getopt(sys.argv[1:], "hs:o:d:u:n:v", ["help", "source_env=", "output=", "date=", "user=", "report_number=", "verbose"])
@@ -67,6 +71,7 @@ scripts_home = os.path.dirname(script_path)
 for o, a in opts:
   if o in ("-v", "--verbose"):
     verbose = True
+    os.environ["VERBOSE"] = "yes"
   elif o in ("-h", "--help"):
     usage()
     sys.exit()
@@ -163,23 +168,30 @@ confluence_pageid = "62013301"
 confluence_history_pageid = "62013304"
 report_title = (report_number + " - capacity weekly report on: " + env)
 export_file_extension = (env + "_" + report_date + ".xlsx")
-log_file_extension = (config.current_timestamp + ".log")
 export_file = (report_number + "_Capacity_weekly_" + export_file_extension)
-log_file = (report_title + "_" + log_file_extension)
+log_file_extension = (config.current_timestamp + ".log")
+log_file1 = (report_title + "_" + log_file_extension)
+log_file_list = [log_file1]
+log_file_list_len = len(log_file_list)
+
+config.isOFFICEnetwork(config.default_local_ip)
 
 if verbose == True:
   logger.debug('current timestamp is: ' + config.blue + config.current_timestamp)
   logger.debug('my default ip is: ' + config.blue + config.get_ip())
   if config.office == 1:
-    logger.debug(config.blue + 'office_network is present')
+    if verbose == True:
+      logger.debug(config.blue + 'office_network is present')
     office_ip = config.default_local_ip
     os.environ["OFFICE_IP"] = office_ip
   elif config.vpn == 1:
-    logger.debug(config.blue + 'vpn is present')
+    if verbose == True:
+      logger.debug(config.blue + 'vpn is present')
     vpn_ip = config.default_local_ip
     os.environ["VPN_IP"] = vpn_ip
   else:
-    logger.debug(config.blue + 'not connected to the office')
+    if verbose == True:
+      logger.debug(config.blue + 'not connected to the office')
 
 os.environ["REPORT_FILE1"] = report_file1
 os.environ["REPORT_FILE2"] = report_file2
@@ -196,12 +208,13 @@ os.environ["CONFLUENCE_HISTORY_PAGEID"] = confluence_history_pageid
 os.environ["REPORT_TITLE"] = report_title
 os.environ["EXPORT_FILE_EXTENSION"] = export_file_extension
 os.environ["LOG_FILE_EXTENSION"] = log_file_extension
-os.environ["LOG_FILE"] = log_file
+os.environ["LOG_FILE1"] = log_file1
 
 start_time_bash_seconds = time.time()
 try:
   subprocess.check_call(scripts_home + '/bteq/report.bteq', shell=False, stdout = subprocess.PIPE)
-  logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file)
+  if verbose == True:
+    logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file1)
 except:
   logger.error("bteq script failed")
   sys.exit(1)
@@ -222,9 +235,10 @@ with open(new_tmp + '/' + report_file2, "a+b") as report_file2_open:
     report_file2_open.write('\n\n\n\n')
     report_file2_open.write(report_file3_read)
 
-logger.debug("Few manipulations for AWT extract data")
+logger.info("Few manipulations for AWT extract data")
 def AWTweekly(title):
-  logger.debug(config.wine + 'start: ' + config.yellow + title)
+  if verbose == True:
+    logger.debug(config.wine + 'start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
     for day_week_range in range(1,8):
       #date_week = str(datetime.datetime.now() - datetime.timedelta(days=day_week_range))[:10]
@@ -240,18 +254,22 @@ def AWTweekly(title):
       with open(new_tmp + '/' + report_file10, "a+b") as weekly_transpose_result:
         weekly_transpose.to_csv(weekly_transpose_result,index=True,header=1,sep='~')
         weekly_transpose_result.write('\n\n')
-  logger.debug(config.wine + 'end: ' + config.yellow + title)
+  if verbose == True:
+    logger.debug(config.wine + 'end: ' + config.yellow + title)
 
 def AWTmonthly(title):
-  logger.debug(config.wine + 'start: ' + config.yellow + title)
+  if verbose == True:
+    logger.debug(config.wine + 'start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
     df_AWT_grid_graph_monthly=pandas.read_csv(new_tmp + '/' + report_file8, "r",delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
     df_AWT_grid_graph_monthly_pivot = df_AWT_grid_graph_monthly.pivot_table(index='TheDate', columns='thistime', values=['WD_ETL','WD_OTHER'], aggfunc=numpy.sum)
     df_AWT_grid_graph_monthly_pivot.to_csv(new_tmp + '/' + report_file11,index=True,header=1,sep='~')
-  logger.debug(config.wine + 'end: ' + config.yellow + title)
+  if verbose == True:
+    logger.debug(config.wine + 'end: ' + config.yellow + title)
 
 def AWTdaily(title):
-  logger.debug(config.wine + 'start: ' + config.yellow + title)
+  if verbose == True:
+    logger.debug(config.wine + 'start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
     next(report_file8_open)
     day_date_list = [ ]
@@ -262,29 +280,29 @@ def AWTdaily(title):
     days_list = list(days_list_set)
     days_list_sorted = sorted(days_list)
     days_sorted_amount = len(days_list_sorted)
-    def AWTdailyTranspose(title):
-      logger.debug(config.wine + 'start: ' + config.yellow + title)
-      for day in days_list_sorted:
-        report_file8_open.seek(0,0)
-        day_line_string = ""
-        for day_line in report_file8_open:
-          if day in day_line:
-            day_line_string = day_line_string + day_line
-        daily_file = StringIO(day_line_string)
-        df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
-        daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
-        with open(new_tmp + '/' + report_file12, "a+b") as daily_transpose_final:
-          daily_transpose.to_csv(daily_transpose_final,index=True,header=1,sep='~')
-          daily_transpose_final.write('\n\n')
-      logger.debug(config.wine + 'end: ' + config.yellow + title)
-    AWTdailyTranspose('AWT daily Transpose')
+    for day in days_list_sorted:
+      report_file8_open.seek(0,0)
+      day_line_string = ""
+      for day_line in report_file8_open:
+        if day in day_line:
+          day_line_string = day_line_string + day_line
+      daily_file = StringIO(day_line_string)
+      df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+      daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
+      with open(new_tmp + '/' + report_file12, "a+b") as daily_transpose_final:
+        daily_transpose.to_csv(daily_transpose_final,index=True,header=1,sep='~')
+        daily_transpose_final.write('\n\n')
   os.remove(new_tmp + '/' + report_file8)
-  logger.debug(config.wine + 'end: ' + config.yellow + title)
+  if verbose == True:
+    logger.debug(config.wine + 'end: ' + config.yellow + title)
 
-logger.debug('Converting exported data into M$ Excel sheet')
+start_time_excel_conversion = time.time()
+logger.info('Converting exported data into M$ Excel sheet: ' + config.cyan + export_file)
 
 def convert_to_excel(exportFileName, title):
-  logger.debug(config.wine + 'start: ' + config.yellow + title)
+  start_time_excel_load = time.time()
+  if verbose == True:
+    logger.debug(config.wine + 'start: ' + config.yellow + title)
   os.chdir(new_tmp)
   workbook = Workbook(exportFileName, {'strings_to_numbers': True})
   columns = {}
@@ -299,6 +317,12 @@ def convert_to_excel(exportFileName, title):
         columns[newWorksheetName + '_columns']=colx+1
         rows[newWorksheetName + '_rows']=rowx+1
   
+  end_time_excel_load = time.time()
+  excel_load_seconds = [end_time_excel_load, -start_time_excel_load]
+  time_excel_load_seconds = sum(excel_load_seconds)
+  if verbose == True:
+    logger.debug(config.limon + "Data loaded to excel time: " + config.wine + "%.4f" % time_excel_load_seconds + config.limon +  " seconds")
+ 
   # color scale in overall_system_activity
   format_green = workbook.add_format({'bg_color': '#C6EFCE',})
   format_orange = workbook.add_format({'bg_color': '#FFEB9C',})
@@ -627,34 +651,20 @@ def convert_to_excel(exportFileName, title):
   # order of sheets in workbook
   workbook.worksheets_objs.sort(key=lambda x: x.name)
   workbook.close()
-  logger.debug(config.wine + 'end: ' + config.yellow + title)
+  if verbose == True:
+    logger.debug(config.wine + 'end: ' + config.yellow + title)
 
-def archive(title):
-  logger.debug(config.wine + 'start: ' + config.yellow + title)
-  #report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file9, report_file10, report_file11, report_file12]
-  #report_output_list_len = len(report_output_list)
-  for report_file in range(0, report_output_list_len):
-    archive_file_extension = ("_" + env + "_" + config.current_timestamp + ".outdone")
-    new_name = str(report_output_list[report_file])[:-4] + archive_file_extension
-    os.rename(new_tmp + '/' + report_output_list[report_file], new_tmp + '/' + new_name)
-    with open(new_tmp + '/' + new_name, 'rb') as new_name_in:
-      with gzip.open(new_tmp + '/' + new_name + '.gz', 'wb') as new_name_out:
-        shutil.copyfileobj(new_name_in, new_name_out)
-        os.remove(new_tmp + '/' + new_name)
-
-  with open(new_log + '/' + log_file, 'rb') as new_name_in:
-    with gzip.open(new_log + '/' + log_file + '.gz', 'wb') as new_name_out:
-      shutil.copyfileobj(new_name_in, new_name_out)
-      os.remove(new_log + '/' + log_file)
-  logger.debug(config.wine + 'end: ' + config.yellow + title)
+end_time_excel_conversion = time.time()
+excel_conversion_seconds = [end_time_excel_conversion, -start_time_excel_conversion]
+time_excel_conversion_seconds = sum(excel_conversion_seconds)
+if verbose == True:
+  logger.debug(config.limon + "Excel conversion time: " + config.wine + "%.4f" % time_excel_conversion_seconds + config.limon +  " seconds")
 
 if __name__ == '__main__':
-  weekly = mp.Process(target=AWTweekly, args=('AWT weekly spawned',))
-  monthly = mp.Process(target=AWTmonthly, args=('AWT monthly spawned',))
-  daily = mp.Process(target=AWTdaily, args=('AWT daily spawned',))
-  convert = mp.Process(target=convert_to_excel, args=(export_file,'Convertion of files into Excel sheet'))
-  arch = mp.Process(target=archive, args=('Archiving all output files',))
-  
+  weekly = mp.Process(target=AWTweekly, args=('AWT weekly spawned: ' + config.cyan + report_file10,))
+  monthly = mp.Process(target=AWTmonthly, args=('AWT monthly spawned: ' + config.cyan + report_file11,))
+  daily = mp.Process(target=AWTdaily, args=('AWT daily spawned: ' + config.cyan + report_file12,))
+  convert = mp.Process(target=convert_to_excel, args=(export_file,'Convertion of files into Excel sheet: ' + config.cyan + export_file))
 
   #w = threading.Thread(target=AWTweekly, args=('AWT weekly spawned',))
   #m = threading.Thread(target=AWTmonthly, args=('AWT monthly spawned',))
@@ -668,10 +678,27 @@ if __name__ == '__main__':
 
   convert.start()
   convert.join()
-  arch.start()
-  arch.join()
-#convert_to_excel(export_file)
-#archive('Archiving all output files')
+
+#archiving out and log files:
+#carefully: for small files, running it as parallel threads is SLOWER then one-by-one about 3x
+#carefully: running it as parallel processes is SLOWER then one-by-one about 10x !
+#but for BIG files, it might be far faster if there are few cpu-s
+start_time_compression = time.time()
+#one-by-one:
+for report_file in report_output_list:
+  config.outArchive('archiving one-by-one: ' + config.cyan + report_file, report_file, env, new_tmp)
+for log_file in log_file_list:
+  config.logArchive('archiving one-by-one: ' + config.cyan + log_file, log_file, new_log)
+#in parallel
+#joblib_method = "processes"
+#joblib_method = "threads"
+#Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.outArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
+#Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
+end_time_compression = time.time()
+compression_seconds = [end_time_compression, -start_time_compression]
+time_compression_seconds = sum(compression_seconds)
+if verbose == True:
+  logger.debug(config.limon + "compression time: " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
 
 end_time_template_seconds = time.time()
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
@@ -681,7 +708,8 @@ time_bash_seconds = sum(bash_seconds)
 
 python_seconds = [time_template_seconds, -time_bash_seconds]
 time_python_seconds =sum(python_seconds)
-  
-logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
-logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
-logger.debug(config.limon + "Python script run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
+
+if verbose == True:
+  logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
+  logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
+  logger.debug(config.limon + "Python script run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")

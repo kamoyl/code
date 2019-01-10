@@ -47,7 +47,9 @@ inf "Preparing report ${YELLOW}${REPORT_NUMBER}${CYAN} files for ${YELLOW}${REPO
 TD_USER="TDMONIT_ALL_USR"
 source "${SCRIPTS_HOME}/AUTH"
 
-debug "$0:
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "$0:
                                               SCRIPTS_HOME=${YELLOW}${SCRIPTS_HOME}${BLUE}
                                               TMP=${YELLOW}${TMP}${BLUE}
                                               VAR=${YELLOW}${VAR}${BLUE}
@@ -56,12 +58,16 @@ debug "$0:
                                               TD_SERVER=${YELLOW}${TD_SERVER}${BLUE}
                                               TD_USER=${YELLOW}${TD_USER}${BLUE}
                                               TD_PASSWD=${YELLOW}${TD_PASSWD}"
+fi
+
 END_BASH_TIME=$(date +%s.%4N)
 export BASH_RUNTIME=$(echo "scale=4; x=(${END_BASH_TIME} - ${START_BASH_TIME}); if(x<1) print 0; x" | bc)
-inf "BASH script run for: ${WINE}${BASH_RUNTIME}${CYAN} seconds"
-
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "BASH script run for: ${WINE}${BASH_RUNTIME}${CYAN} seconds"
+fi
 START_BTEQ_TIME=$(date +%s.%4N)
-bteq <<-END > "${LOG}/${LOG_FILE}" 2>&1
+bteq <<-END > "${LOG}/${LOG_FILE1}" 2>&1
 .LOGON ${TD_SERVER}/${TD_USER},${TD_PASSWD}
 .SET SESSION CHARSET 'UTF8';
 .SET WIDTH 65531;
@@ -334,7 +340,7 @@ END
 if [ $? -ne 0 ]
 then
   error "BTEQ script error:"
-  grep -i Failure "${LOG}/${LOG_FILE}"
+  grep -i Failure "${LOG}/${LOG_FILE1}"
   exit 1
 else
   inf "Report Files prepared"
@@ -360,4 +366,7 @@ fi
 
 END_BTEQ_TIME=$(date +%s.%4N)
 export BTEQ_RUNTIME=$(echo "scale=4; x=(${END_BTEQ_TIME} - ${START_BTEQ_TIME}); if(x<1) print 0; x" | bc)
-inf "BTEQ script run for: ${WINE}${BTEQ_RUNTIME}${CYAN} seconds"
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "BTEQ script run for: ${WINE}${BTEQ_RUNTIME}${CYAN} seconds"
+fi
