@@ -1,7 +1,6 @@
 #!/bin/bash
 
 RESET=$(tput -T xterm sgr0)
-
 START_BASH_TIME=$(date +%s.%4N)
 
 exec 3>&2 # logging stream (file descriptor 3) defaults to STDERR

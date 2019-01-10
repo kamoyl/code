@@ -8,6 +8,7 @@ import coloredlogs
 import socket
 from netaddr import IPNetwork, IPAddress
 import getopt
+import multiprocessing
 
 wine = '\x1b[38;2;191;000;000m'
 limon = '\x1b[38;2;191;255;000m'
@@ -45,6 +46,8 @@ os.environ["DBALOGV"] = dbalogv
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG',milliseconds=True)
+
+cpu_cores = multiprocessing.cpu_count()
 
 def usage():
   print(lime + '   -o, --output=' + blue + '   directory to which will go all LOGs and TMPs')

@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
 
 import sys
 import getopt
@@ -17,6 +18,10 @@ import threading
 import numpy
 import csv
 import glob
+#import concurrent.futures
+from xlsxwriter import Workbook
+from xlsxwriter.utility import xl_rowcol_to_cell
+
 try:
   from StringIO import StringIO
 except ImportError:
@@ -25,6 +30,8 @@ except ImportError:
 from colorama import init,Fore, Back, Style
 init(autoreset=True)
 from termcolor import colored
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 import config
 
@@ -71,7 +78,7 @@ for o, a in opts:
     output = a
   elif o in ("-d", "--date"):
     report_date = a
-    #report_date_long = ???
+    report_date_long = a + ' 10:00:00.999999'
     os.environ["REPORT_DATE"] = report_date
   elif o in ("-u", "--user"):
     user = a
@@ -93,8 +100,8 @@ if not report_number:
   exit()
 
 if not report_date:
-  report_date = datetime.datetime.now().strftime("%Y-%m-%d")
-  report_date_long = datetime.datetime.now()
+  report_date = config.yesterday_date
+  report_date_long = config.yesterday_date_long
   os.environ["REPORT_DATE"] = report_date
 
 if output:
@@ -149,7 +156,9 @@ report_file8 = "6_AWT_grid_graph.out"
 report_file9 = "5_flow_control_heat_map.out"
 report_file10 = "6_AWT_grid_graph_weekly.out"
 report_file11 = "6_AWT_grid_graph_monthly.out"
-report_file12 = "6_AWT_grid_graph_daily"
+report_file12 = "6_AWT_grid_graph_daily.out"
+report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file9, report_file10, report_file11, report_file12]
+report_output_list_len = len(report_output_list)
 confluence_pageid = "62013301"
 confluence_history_pageid = "62013304"
 report_title = (report_number + " - capacity weekly report on: " + env)
@@ -190,9 +199,8 @@ os.environ["LOG_FILE_EXTENSION"] = log_file_extension
 os.environ["LOG_FILE"] = log_file
 
 start_time_bash_seconds = time.time()
-#os.system(scripts_home + '/template.bash')
 try:
-  #subprocess.check_call(scripts_home + '/bteq/report.bteq', shell=False, stdout = subprocess.PIPE)
+  subprocess.check_call(scripts_home + '/bteq/report.bteq', shell=False, stdout = subprocess.PIPE)
   logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file)
 except:
   logger.error("bteq script failed")
@@ -211,10 +219,7 @@ with open(new_tmp + '/' + report_file3, "a+b") as report_file3_open:
 with open(new_tmp + '/' + report_file2, "a+b") as report_file2_open:
   with open(new_tmp + '/' + report_file3, "r") as report_file3_open:
     report_file3_read = report_file3_open.read()
-    report_file2_open.write('\n')
-    report_file2_open.write('\n')
-    report_file2_open.write('\n')
-    report_file2_open.write('\n')
+    report_file2_open.write('\n\n\n\n')
     report_file2_open.write(report_file3_read)
 
 logger.debug("Few manipulations for AWT extract data")
@@ -223,7 +228,7 @@ def AWTweekly(title):
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
     for day_week_range in range(1,8):
       #date_week = str(datetime.datetime.now() - datetime.timedelta(days=day_week_range))[:10]
-      date_week = str(report_date_long - datetime.timedelta(days=day_week_range))[:10]
+      date_week = (report_date_long - datetime.timedelta(days=day_week_range)).strftime("%Y-%m-%d")
       report_file8_open.seek(0,0)
       week_prep_variable = ""
       for week_line in report_file8_open:
@@ -255,50 +260,379 @@ def AWTdaily(title):
       day_date_list.append(day_date)
     days_list_set = set(day_date_list)
     days_list = list(days_list_set)
-    days_amount = len(days_list_set)
-    for day in days_list:
-      report_file8_open.seek(0,0)
-      day_line_string = ""
-      for day_line in report_file8_open:
-        if day in day_line:
-          day_line_string = day_line_string + day_line
-      daily_file = StringIO(day_line_string)
-      df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
-      daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
-      daily_transpose.to_csv(new_tmp + '/' + report_file12 + '_transpose_' + day + '.out',index=True,header=1,sep='~')
-  #os.remove(new_tmp + '/' + report_file12 + '_' + day_date + '.out')
-    
+    days_list_sorted = sorted(days_list)
+    days_sorted_amount = len(days_list_sorted)
+    def AWTdailyTranspose(title):
+      logger.debug(config.wine + 'start: ' + config.yellow + title)
+      for day in days_list_sorted:
+        report_file8_open.seek(0,0)
+        day_line_string = ""
+        for day_line in report_file8_open:
+          if day in day_line:
+            day_line_string = day_line_string + day_line
+        daily_file = StringIO(day_line_string)
+        df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+        daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
+        with open(new_tmp + '/' + report_file12, "a+b") as daily_transpose_final:
+          daily_transpose.to_csv(daily_transpose_final,index=True,header=1,sep='~')
+          daily_transpose_final.write('\n\n')
+      logger.debug(config.wine + 'end: ' + config.yellow + title)
+    AWTdailyTranspose('AWT daily Transpose')
+  os.remove(new_tmp + '/' + report_file8)
   logger.debug(config.wine + 'end: ' + config.yellow + title)
 
+logger.debug('Converting exported data into M$ Excel sheet')
 
-if __name__ == '__main__':
-  w = mp.Process(target=AWTweekly, args=('AWT weekly spawned',))
-  m = mp.Process(target=AWTmonthly, args=('AWT monthly spawned',))
-  d = mp.Process(target=AWTdaily, args=('AWT daily spawned',))
+def convert_to_excel(exportFileName, title):
+  logger.debug(config.wine + 'start: ' + config.yellow + title)
+  os.chdir(new_tmp)
+  workbook = Workbook(exportFileName, {'strings_to_numbers': True})
+  columns = {}
+  rows = {}
+  for filename in report_output_list:
+    spamReader = csv.reader((open(filename, 'rb')), delimiter='~', quotechar='"')
+    newWorksheetName = filename.replace('.out', '')
+    worksheet = workbook.add_worksheet(newWorksheetName)
+    for rowx, row in enumerate(spamReader):
+      for colx, value in enumerate(row):
+        worksheet.write(rowx, colx, value)
+        columns[newWorksheetName + '_columns']=colx+1
+        rows[newWorksheetName + '_rows']=rowx+1
+  
+  # color scale in overall_system_activity
+  format_green = workbook.add_format({'bg_color': '#C6EFCE',})
+  format_orange = workbook.add_format({'bg_color': '#FFEB9C',})
+  format_red = workbook.add_format({'bg_color': '#FFC7CE',})
+  format_navy = workbook.add_format({'bg_color': '#001f3f',})
+  format_blue = workbook.add_format({'bg_color': '#0074D9',})
+  format_aqua = workbook.add_format({'bg_color': '#7FDBFF',})
+  format_teal = workbook.add_format({'bg_color': '#39CCCC',})
+  format_olive = workbook.add_format({'bg_color': '#3D9970',})
+  format_lime = workbook.add_format({'bg_color': '#01FF70',})
+  format_yellow = workbook.add_format({'bg_color': '#FFDC00',})
+  format_maroon = workbook.add_format({'bg_color': '#85144b',})
+  format_fuchsia = workbook.add_format({'bg_color': '#F012BE',})
+  bold = workbook.add_format({'bold': True})
 
-  #w = threading.Thread(target=AWTweekly, args=('AWT weekly spawned',))
-  #m = threading.Thread(target=AWTmonthly, args=('AWT monthly spawned',))
-  #d = threading.Thread(target=AWTdaily, args=('AWT monthly spawned',))
-  w.start()
-  m.start()
-  d.start()
-  m.join()
-  w.join()
-  d.join()
+  #format of numbers
+  format_decimal = workbook.add_format()
+  format_decimal.set_num_format('0.00')
+  format_cut_decimal = workbook.add_format()
+  format_cut_decimal.set_num_format('0')
+  format_text = workbook.add_format({'num_format': '@'})
+  #merging format:
+  merge_format = workbook.add_format({
+    'bold': 1,
+    'border': 0,
+    'align': 'center',
+    'valign': 'vcenter'})
+  # sheets
+  worksheet_1_Diskspace = workbook.get_worksheet_by_name('1_Diskspace')
+  worksheet_2_Diskspace_trend = workbook.get_worksheet_by_name('2_Diskspace_trend')
+  worksheet_3_cpu_COD_busy_monthly = workbook.get_worksheet_by_name('3_cpu_COD_busy_monthly')
+  worksheet_4_cpu_ImpactCPU_monthly = workbook.get_worksheet_by_name('4_cpu_ImpactCPU_monthly')
+  worksheet_5_flow_control_heat_map = workbook.get_worksheet_by_name('5_flow_control_heat_map')
+  worksheet_7_Ampconfig = workbook.get_worksheet_by_name('7_Ampconfig')
+  worksheet_8_cpu_Hourly_Details = workbook.get_worksheet_by_name('8_cpu_Hourly_Details')
+  worksheet_9_cpu_Weekday_Details = workbook.get_worksheet_by_name('9_cpu_Weekday_Details')
+  worksheet_10_AWT_grid_graph_daily = workbook.get_worksheet_by_name('6_AWT_grid_graph_daily')
+  worksheet_11_AWT_grid_graph_weekly = workbook.get_worksheet_by_name('6_AWT_grid_graph_weekly')
+  worksheet_12_AWT_grid_graph_monthly = workbook.get_worksheet_by_name('6_AWT_grid_graph_monthly')
+  # autofilter (should be dynamically created - accordingly to amount of columns)
+  worksheet_7_Ampconfig.autofilter('A1:H1')
+  worksheet_3_cpu_COD_busy_monthly.autofilter('A1:Z1')
+  #worksheet_4_cpu_ImpactCPU_monthly.autofilter('A1:Y1')
+  worksheet_8_cpu_Hourly_Details.autofilter('A1:V1')
+  worksheet_9_cpu_Weekday_Details.autofilter('A1:G1')
+  # Make the header row larger.
+  worksheet_1_Diskspace.set_row(0, None, bold)
+  worksheet_1_Diskspace.set_row(23, None, bold)
+  worksheet_1_Diskspace.set_row(25, None, bold)
+  worksheet_2_Diskspace_trend.set_row(0, None, bold)
+  worksheet_3_cpu_COD_busy_monthly.set_row(0, None, bold)
+  worksheet_4_cpu_ImpactCPU_monthly.set_row(0, None, bold)
+  worksheet_5_flow_control_heat_map.set_row(0, None, bold)
+  worksheet_10_AWT_grid_graph_daily.set_row(0, None, bold)
+  worksheet_10_AWT_grid_graph_daily.set_row(1, None, bold)
+  worksheet_11_AWT_grid_graph_weekly.set_row(0, None, bold)
+  worksheet_11_AWT_grid_graph_weekly.set_row(1, None, bold)
+  worksheet_12_AWT_grid_graph_monthly.set_row(0, None, bold)
+  worksheet_12_AWT_grid_graph_monthly.set_row(1, None, bold)
+  worksheet_7_Ampconfig.set_row(0, None, bold)
+  worksheet_8_cpu_Hourly_Details.set_row(0, None, bold)
+  worksheet_9_cpu_Weekday_Details.set_row(0, None, bold)
+  # some format applied on sheet tabs
+  worksheet_7_Ampconfig.set_tab_color('yellow')
+  worksheet_3_cpu_COD_busy_monthly.set_tab_color('green')
+  worksheet_4_cpu_ImpactCPU_monthly.set_tab_color('#16A085')
+  worksheet_8_cpu_Hourly_Details.set_tab_color('#ff00ff')
+  worksheet_9_cpu_Weekday_Details.set_tab_color('#0000ff')
+  worksheet_1_Diskspace.set_tab_color('#A569BD')
+  worksheet_2_Diskspace_trend.set_tab_color('#2980B9')
+  worksheet_5_flow_control_heat_map.set_tab_color('#FF851B')
+  worksheet_10_AWT_grid_graph_daily.set_tab_color('lime')
+  worksheet_12_AWT_grid_graph_monthly.set_tab_color('#03FF70')
+  worksheet_11_AWT_grid_graph_weekly.set_tab_color('#05FF70')
 
-end_time_template_seconds = time.time()
-template_seconds = [end_time_template_seconds, -start_time_template_seconds]
+  # decimal format applied to some columns:
+  worksheet_1_Diskspace.set_column('A:E', 15)
+  worksheet_1_Diskspace.set_column('F:F', 23)
+  worksheet_3_cpu_COD_busy_monthly.set_column('A:C', 16)
+  worksheet_3_cpu_COD_busy_monthly.set_column('D:AA', 6, format_cut_decimal)
+  worksheet_3_cpu_COD_busy_monthly.set_column('AB:AB', 23, format_cut_decimal)
+  worksheet_4_cpu_ImpactCPU_monthly.set_column('A:A', 10)
+  worksheet_4_cpu_ImpactCPU_monthly.set_column('B:Y', 6, format_cut_decimal)
+  worksheet_4_cpu_ImpactCPU_monthly.set_column('Z:Z', 15)
+  worksheet_5_flow_control_heat_map.set_column('A:A', 10)
+  worksheet_5_flow_control_heat_map.set_column('B:AW', 5)
+  worksheet_5_flow_control_heat_map.set_column('AX:AX', 17)
+  worksheet_10_AWT_grid_graph_daily.set_column('A:A', 11)
+  worksheet_10_AWT_grid_graph_daily.set_column('B:EN', 10)
+  worksheet_11_AWT_grid_graph_weekly.set_column('A:A', 16)
+  worksheet_11_AWT_grid_graph_weekly.set_column('B:EN', 10)
+  worksheet_11_AWT_grid_graph_weekly.set_row(42, 20, format_cut_decimal)
+  worksheet_11_AWT_grid_graph_weekly.set_row(43, 20, format_cut_decimal)
+  worksheet_12_AWT_grid_graph_monthly.set_column('A:A', 10)
+  worksheet_12_AWT_grid_graph_monthly.set_column('B:KC', 8)
+  worksheet_12_AWT_grid_graph_monthly.set_row(35, None, format_cut_decimal)
+  worksheet_7_Ampconfig.set_column('A:H', 23, format_cut_decimal)
+  #conditional formatting 
+  worksheet_3_cpu_COD_busy_monthly.conditional_format('D2:AB' + str(rows['3_cpu_COD_busy_monthly_rows']), {'type':   'cell',
+    'criteria': '<=',
+    'value':    50,
+    'format':   format_green})
+  worksheet_3_cpu_COD_busy_monthly.conditional_format('D2:AC' + str(rows['3_cpu_COD_busy_monthly_rows']), {'type':   'cell',
+    'criteria': 'between',
+    'minimum':  51,
+    'maximum':  80,
+    'format':   format_orange})
+  worksheet_3_cpu_COD_busy_monthly.conditional_format('D2:AC' + str(rows['3_cpu_COD_busy_monthly_rows']), {'type':   'cell',
+    'criteria': '>=',
+    'value':    81,
+    'format':   format_red})
+  worksheet_4_cpu_ImpactCPU_monthly.conditional_format('B2:Z' + str(rows['4_cpu_ImpactCPU_monthly_rows']), {'type':   'cell',
+    'criteria': '<=',
+    'value':    50,
+    'format':   format_green})
+  worksheet_4_cpu_ImpactCPU_monthly.conditional_format('B2:Z' + str(rows['4_cpu_ImpactCPU_monthly_rows']), {'type':   'cell',
+    'criteria': 'between',
+    'minimum':  51,
+    'maximum':  80,
+    'format':   format_orange})
+  worksheet_4_cpu_ImpactCPU_monthly.conditional_format('B2:Z' + str(rows['4_cpu_ImpactCPU_monthly_rows']), {'type':   'cell',
+    'criteria': '>=',
+    'value':    81,
+    'format':   format_red})
+  worksheet_5_flow_control_heat_map.conditional_format('B2:AX' + str(rows['5_flow_control_heat_map_rows']), {'type':   'cell',
+    'criteria': '<=',
+    'value':    0,
+    'format':   format_green})
+  worksheet_5_flow_control_heat_map.conditional_format('B2:AX' + str(rows['5_flow_control_heat_map_rows']), {'type':   'cell',
+    'criteria': 'between',
+    'minimum':  0.1,
+    'maximum':  0.99,
+    'format':   format_orange})
+  worksheet_5_flow_control_heat_map.conditional_format('B2:AX' + str(rows['5_flow_control_heat_map_rows']), {'type':   'cell',
+    'criteria': '>=',
+    'value':    1,
+    'format':   format_red})
+  Diskspace_trend = workbook.add_chart({'type': 'column', 'subtype': 'stacked'})
+  Diskspace_trend.set_style(10)
 
-time_template_seconds = sum(template_seconds)
-time_bash_seconds = sum(bash_seconds)
+  Diskspace_trend.add_series({
+    'name': '=1_Diskspace!$E$1',
+    'categories': '=1_Diskspace!$A$2:$A$' + str(rows['1_Diskspace_rows']-8),
+    'values': '=1_Diskspace!$E$2:$E$' + str(rows['1_Diskspace_rows']-8),
+  })
+  Diskspace_trend.add_series({
+    'name': '=1_Diskspace!$F$1',
+    'categories': '=1_Diskspace!$A$2:$A$' + str(rows['1_Diskspace_rows']-8),
+    'values': '=1_Diskspace!$F$2:$F$' + str(rows['1_Diskspace_rows']-8),
+  })
+  Diskspace_trend.set_legend({
+    'position': 'right'
+  })
+  Diskspace_trend.set_size({'width': 1400, 'height': 550})
+  worksheet_2_Diskspace_trend.insert_chart('A1', Diskspace_trend)
 
-python_seconds = [time_template_seconds, -time_bash_seconds]
-time_python_seconds = sum(python_seconds)
+  chart_cpu_per_hour = workbook.add_chart({'type': 'line'})
+  chart_cpu_per_hour.set_title ({'name': '=3_cpu_COD_busy_monthly!$AB$1'})
+  chart_cpu_per_hour.add_series({
+    'name': '=3_cpu_COD_busy_monthly!$AB$1',
+    'categories': '=3_cpu_COD_busy_monthly!$B$2:$B$' + str(rows['3_cpu_COD_busy_monthly_rows']),
+    'values': '=3_cpu_COD_busy_monthly!$AB$2:$AB$' + str(rows['3_cpu_COD_busy_monthly_rows']),
+    'line':   {'width': 2.25},
+    'marker': {
+      'type': 'automatic',
+      'size': '5',
+      },
+  })
+  chart_cpu_per_hour.set_size({'width': 1300, 'height': 550})
+  worksheet_3_cpu_COD_busy_monthly.insert_chart('A38', chart_cpu_per_hour)
+
+# daily grap AWT in a loop - 30 charts must be here
+  name = 1
+  wd_etl = 3
+  wd_other = 4
+  chart = 1
+  bolding = 0
+  for x in xrange(1, 32):
+    #merging:
+    worksheet_10_AWT_grid_graph_daily.merge_range('C' + str(name) + ':EN' + str(name), None, merge_format)
+    worksheet_10_AWT_grid_graph_daily.set_row(bolding, None, bold)
+    worksheet_10_AWT_grid_graph_daily.set_row(name, None, bold)
+    daily_gridgraph = workbook.add_chart({'type': 'column', 'subtype': 'stacked'})
+    daily_gridgraph.set_title ({'name': '=6_AWT_grid_graph_daily!$B$' + str(name)}) #next B7
+    daily_gridgraph.set_style(10)
+
+    daily_gridgraph.add_series({
+      'name': '=6_AWT_grid_graph_daily!$A$3',
+      'categories': '=6_AWT_grid_graph_daily!$B$2:$EN$2',
+      'values': '=6_AWT_grid_graph_daily!$B$' + str(wd_etl) + ':$EN$' + str(wd_etl),     #next B9, B15 +6
+    })
+    daily_gridgraph.add_series({
+      'name': '=6_AWT_grid_graph_daily!$A$4',
+      'categories': '=6_AWT_grid_graph_daily!$B$2:$EN$2',
+      'values': '=6_AWT_grid_graph_daily!$B$' + str(wd_other) + ':$F$' + str(wd_other),       #next B10, B16...
+    })
+    daily_gridgraph.set_legend({
+      'position': 'right'
+    })
+    daily_gridgraph.set_x_axis({'name': 'Time: HH:MM'})
+    daily_gridgraph.set_y_axis({'name': 'Workload'})
+    daily_gridgraph.set_size({'width': 1880, 'height': 400})
+    worksheet_10_AWT_grid_graph_daily.insert_chart('A' + str(chart), daily_gridgraph) #next chart A7
+    worksheet_10_AWT_grid_graph_daily.conditional_format('B' + str(wd_etl)  + ':EN' + str(wd_other), {'type':   'cell',
+      'criteria': '<=',
+      'value':    50,
+      'format':   format_green})
+    worksheet_10_AWT_grid_graph_daily.conditional_format('B' + str(wd_etl)  + ':EN' + str(wd_other), {'type':   'cell',
+      'criteria': 'between',
+      'minimum':  51,
+      'maximum':  80,
+      'format':   format_orange})
+    worksheet_10_AWT_grid_graph_daily.conditional_format('B' + str(wd_etl)  + ':EN' + str(wd_other), {'type':   'cell',
+      'criteria': '>=',
+      'value':    81,
+      'format':   format_red})
+    chart = chart + 20
+    name = name + 6
+    wd_etl = wd_etl + 6
+    wd_other = wd_other + 6
+    bolding = bolding + 6
+  #weekly
+  worksheet_11_AWT_grid_graph_weekly.write(42, 0, 'Avg WD_ETL')
+  worksheet_11_AWT_grid_graph_weekly.write(43, 0, 'Avg WD_OTHER')
+  for col in xrange(1, 144):
+    cell1 = xl_rowcol_to_cell(2, col)
+    cell2 = xl_rowcol_to_cell(8, col)
+    cell3 = xl_rowcol_to_cell(14, col)
+    cell4 = xl_rowcol_to_cell(20, col)
+    cell5 = xl_rowcol_to_cell(26, col)
+    cell6 = xl_rowcol_to_cell(32, col)
+    cell7 = xl_rowcol_to_cell(38, col)
+    cell11 = xl_rowcol_to_cell(3, col)
+    cell21 = xl_rowcol_to_cell(9, col)
+    cell31 = xl_rowcol_to_cell(15, col)
+    cell41 = xl_rowcol_to_cell(21, col)
+    cell51 = xl_rowcol_to_cell(27, col)
+    cell61 = xl_rowcol_to_cell(33, col)
+    cell71 = xl_rowcol_to_cell(39, col)
+    worksheet_11_AWT_grid_graph_weekly.write_formula(42, col, '=AVERAGE(' + str(cell1) + ',' + str(cell2) + ',' + str(cell3) + ',' + str(cell4) + ',' + str(cell5) + ',' + str(cell6) + ',' + str(cell7) + ')')
+    worksheet_11_AWT_grid_graph_weekly.write_formula(43, col, '=AVERAGE(' + str(cell11) + ',' + str(cell21) + ',' + str(cell31) + ',' + str(cell41) + ',' + str(cell51) + ',' + str(cell61) + ',' + str(cell71) + ')')
+  worksheet_11_AWT_grid_graph_weekly.conditional_format('B43:EN44', {'type':   'cell',
+    'criteria': '<=',
+    'value':    50,
+    'format':   format_green})
+  worksheet_11_AWT_grid_graph_weekly.conditional_format('B43:EN44', {'type':   'cell',
+    'criteria': 'between',
+    'minimum':  51,
+    'maximum':  80,
+    'format':   format_orange})
+  worksheet_11_AWT_grid_graph_weekly.conditional_format('B43:EN44', {'type':   'cell',
+    'criteria': '>=',
+    'value':    81,
+    'format':   format_red})
+  chart_gridgraph_weekly = workbook.add_chart({'type': 'column', 'subtype': 'stacked'})
+  chart_gridgraph_weekly.set_title ({'name': 'AWT Grid Graph - last 7 days'})
+  chart_gridgraph_weekly.add_series({
+    'name': '=6_AWT_grid_graph_weekly!$A$3',
+    'categories': '=6_AWT_grid_graph_weekly!$B$2:$EN$2',
+    'values': '=6_AWT_grid_graph_weekly!$B$43:$EN$43',
+  })
+
+  chart_gridgraph_weekly.add_series({
+    'name': '=6_AWT_grid_graph_weekly!$A$4',
+    'categories': '=6_AWT_grid_graph_weekly!$B$2:$EN$2',
+    'values': '=6_AWT_grid_graph_weekly!$B$44:$EN$44',
+  })
+
+  chart_gridgraph_weekly.set_x_axis({'name': 'Time: HH:MM'})
+  chart_gridgraph_weekly.set_y_axis({'name': 'Workload average'})
+  chart_gridgraph_weekly.set_size({'width': 1880, 'height': 650})
+  worksheet_11_AWT_grid_graph_weekly.insert_chart('A1', chart_gridgraph_weekly)
+  #monthly
+  worksheet_12_AWT_grid_graph_monthly.write(35, 0, 'Avg')
+  worksheet_12_AWT_grid_graph_monthly.merge_range('C1:EO1', None, merge_format)
+  worksheet_12_AWT_grid_graph_monthly.merge_range('EQ1:KC1', None, merge_format)
+  for col in xrange(1, 289):
+    cellX = xl_rowcol_to_cell(3, col)
+    cellY = xl_rowcol_to_cell(33, col)
+    worksheet_12_AWT_grid_graph_monthly.write_formula(35, col, '=AVERAGE(' + str(cellX) + ':' + str(cellY) + ')')
+  worksheet_12_AWT_grid_graph_monthly.conditional_format('B36:KC36', {'type':   'cell',
+    'criteria': '<=',
+    'value':    50,
+    'format':   format_green})
+  worksheet_12_AWT_grid_graph_monthly.conditional_format('B36:KC36', {'type':   'cell',
+   'criteria': 'between',
+    'minimum':  51,
+    'maximum':  80,
+    'format':   format_orange})
+  worksheet_12_AWT_grid_graph_monthly.conditional_format('B36:KC36', {'type':   'cell',
+    'criteria': '>=',
+    'value':    81,
+    'format':   format_red})
+  worksheet_12_AWT_grid_graph_monthly.conditional_format('B4:KC' + str(rows['6_AWT_grid_graph_monthly_rows']), {'type':   'cell',
+    'criteria': '<=',
+    'value':    50,
+    'format':   format_green})
+  worksheet_12_AWT_grid_graph_monthly.conditional_format('B4:KC' + str(rows['6_AWT_grid_graph_monthly_rows']), {'type':   'cell',
+    'criteria': 'between',
+    'minimum':  51,
+    'maximum':  80,
+    'format':   format_orange})
+  worksheet_12_AWT_grid_graph_monthly.conditional_format('B4:KC' + str(rows['6_AWT_grid_graph_monthly_rows']), {'type':   'cell',
+    'criteria': '>=',
+    'value':    81,
+    'format':   format_red})
+  chart_gridgraph = workbook.add_chart({'type': 'column', 'subtype': 'stacked'})
+  chart_gridgraph.set_title ({'name': 'AWT Grid Graph - last 31 days'})
+  chart_gridgraph.add_series({
+    'name': '=6_AWT_grid_graph_monthly!$B$1',
+    'categories': '=6_AWT_grid_graph_monthly!$B$2:$EO$2',
+    'values': '=6_AWT_grid_graph_monthly!$B$36:$EO$36',
+  })
+
+  chart_gridgraph.add_series({
+    'name': '=6_AWT_grid_graph_monthly!$EP$1',
+    'categories': '=6_AWT_grid_graph_monthly!$B$2:$EO$2',
+    'values': '=6_AWT_grid_graph_monthly!$EP$36:$KC$36',
+  })
+
+  chart_gridgraph.set_x_axis({'name': 'Time: HH:MM'})
+  chart_gridgraph.set_y_axis({'name': 'Workload average'})
+  chart_gridgraph.set_size({'width': 1880, 'height': 500})
+  worksheet_12_AWT_grid_graph_monthly.insert_chart('A37', chart_gridgraph)
+
+  # order of sheets in workbook
+  workbook.worksheets_objs.sort(key=lambda x: x.name)
+  workbook.close()
+  logger.debug(config.wine + 'end: ' + config.yellow + title)
 
 def archive(title):
-  logger.debug("Archiving all output files")
-  report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file8, report_file9, report_file10, report_file11]
-  report_output_list_len = len(report_output_list)
+  logger.debug(config.wine + 'start: ' + config.yellow + title)
+  #report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file9, report_file10, report_file11, report_file12]
+  #report_output_list_len = len(report_output_list)
   for report_file in range(0, report_output_list_len):
     archive_file_extension = ("_" + env + "_" + config.current_timestamp + ".outdone")
     new_name = str(report_output_list[report_file])[:-4] + archive_file_extension
@@ -312,6 +646,41 @@ def archive(title):
     with gzip.open(new_log + '/' + log_file + '.gz', 'wb') as new_name_out:
       shutil.copyfileobj(new_name_in, new_name_out)
       os.remove(new_log + '/' + log_file)
+  logger.debug(config.wine + 'end: ' + config.yellow + title)
+
+if __name__ == '__main__':
+  weekly = mp.Process(target=AWTweekly, args=('AWT weekly spawned',))
+  monthly = mp.Process(target=AWTmonthly, args=('AWT monthly spawned',))
+  daily = mp.Process(target=AWTdaily, args=('AWT daily spawned',))
+  convert = mp.Process(target=convert_to_excel, args=(export_file,'Convertion of files into Excel sheet'))
+  arch = mp.Process(target=archive, args=('Archiving all output files',))
+  
+
+  #w = threading.Thread(target=AWTweekly, args=('AWT weekly spawned',))
+  #m = threading.Thread(target=AWTmonthly, args=('AWT monthly spawned',))
+  #d = threading.Thread(target=AWTdaily, args=('AWT monthly spawned',))
+  weekly.start()
+  monthly.start()
+  daily.start()
+  monthly.join()
+  weekly.join()
+  daily.join()
+
+  convert.start()
+  convert.join()
+  arch.start()
+  arch.join()
+#convert_to_excel(export_file)
+#archive('Archiving all output files')
+
+end_time_template_seconds = time.time()
+template_seconds = [end_time_template_seconds, -start_time_template_seconds]
+
+time_template_seconds = sum(template_seconds)
+time_bash_seconds = sum(bash_seconds)
+
+python_seconds = [time_template_seconds, -time_bash_seconds]
+time_python_seconds =sum(python_seconds)
   
 logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
 logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
