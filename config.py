@@ -92,7 +92,7 @@ def isOFFICEnetwork(local_ip):
   elif IPAddress(local_ip) in IPNetwork(vpn2_network):
     vpn=1
 
-def outArchive(title, filename, srcenv, temporary_dir):
+def outArchive(title, filename, srcenv, temporary_dir, *verbosity):
   #if verbose == True:
   logger.debug(wine + 'start: ' + yellow + title)
   archive_file_extension = ("_" + srcenv + "_" + current_timestamp + ".outdone")
