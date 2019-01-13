@@ -210,9 +210,10 @@ os.environ["EXPORT_FILE_EXTENSION"] = export_file_extension
 os.environ["LOG_FILE_EXTENSION"] = log_file_extension
 os.environ["LOG_FILE1"] = log_file1
 
+#running appropriate BTEQ script
 start_time_bash_seconds = time.time()
 try:
-  subprocess.check_call(scripts_home + '/bteq/report.bteq', shell=False, stdout = subprocess.PIPE)
+  subprocess.check_call(scripts_home + '/bteq/report_302.bteq', shell=False, stdout = subprocess.PIPE)
   if verbose == True:
     logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file1)
 except:
@@ -220,7 +221,54 @@ except:
   sys.exit(1)
 end_time_bash_seconds = time.time()
 bash_seconds = [end_time_bash_seconds, -start_time_bash_seconds]
+time_bash_seconds = sum(bash_seconds)
 
+#running appropriate script for bnuilding final report based on BTEQ data
+start_time_report_seconds = time.time()
+#import report_302
+try:
+#  subprocess.check_call(scripts_home + '/report_302.py', shell=False, stdout = subprocess.PIPE)
+  exec(open(scripts_home + '/report_302.py').read())
+except:
+  logger.error("Excel conversion script failed")
+  sys.exit(1)
+end_time_report_seconds = time.time()
+report_seconds = [end_time_report_seconds, -start_time_report_seconds]
+time_report_seconds = sum(report_seconds)
+
+#duplication
+start_time_compression = time.time()
+#one-by-one:
+#for report_file in report_output_list:
+#  config.outArchive('archiving one-by-one: ' + config.cyan + report_file, report_file, env, new_tmp)
+#for log_file in log_file_list:
+#  config.logArchive('archiving one-by-one: ' + config.cyan + log_file, log_file, new_log)
+#in parallel
+#joblib_method = "processes"
+joblib_method = "threads"
+Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.outArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
+Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
+end_time_compression = time.time()
+compression_seconds = [end_time_compression, -start_time_compression]
+time_compression_seconds = sum(compression_seconds)
+if verbose == True:
+  logger.debug(config.limon + "compression time: " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
+
+end_time_template_seconds = time.time()
+template_seconds = [end_time_template_seconds, -start_time_template_seconds]
+time_template_seconds = sum(template_seconds)
+
+python_seconds = [time_template_seconds, -time_bash_seconds, -time_report_seconds]
+time_python_seconds =sum(python_seconds)
+
+if verbose == True:
+  logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
+  logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
+  logger.debug(config.limon + "Python script run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
+  logger.debug(config.limon + "Report build script run for: " + config.wine + "%.4f" % time_report_seconds + config.limon + " seconds")
+#duplication
+exit()
+print('dupa')
 with open(new_tmp + '/' + report_file3, "a+b") as report_file3_open:
   row_list = report_file3_open.readlines()[1:2]
   max_perm = float(row_list[0].split('~')[4])
@@ -686,15 +734,15 @@ if __name__ == '__main__':
 #but for BIG files, it might be far faster if there are few cpu-s
 start_time_compression = time.time()
 #one-by-one:
-for report_file in report_output_list:
-  config.outArchive('archiving one-by-one: ' + config.cyan + report_file, report_file, env, new_tmp)
-for log_file in log_file_list:
-  config.logArchive('archiving one-by-one: ' + config.cyan + log_file, log_file, new_log)
+#for report_file in report_output_list:
+#  config.outArchive('archiving one-by-one: ' + config.cyan + report_file, report_file, env, new_tmp)
+#for log_file in log_file_list:
+#  config.logArchive('archiving one-by-one: ' + config.cyan + log_file, log_file, new_log)
 #in parallel
 #joblib_method = "processes"
-#joblib_method = "threads"
-#Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.outArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
-#Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
+joblib_method = "threads"
+Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.outArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
+Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
 end_time_compression = time.time()
 compression_seconds = [end_time_compression, -start_time_compression]
 time_compression_seconds = sum(compression_seconds)
@@ -703,14 +751,13 @@ if verbose == True:
 
 end_time_template_seconds = time.time()
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
-
 time_template_seconds = sum(template_seconds)
-time_bash_seconds = sum(bash_seconds)
 
-python_seconds = [time_template_seconds, -time_bash_seconds]
+python_seconds = [time_template_seconds, -time_bash_seconds, -time_report_seconds]
 time_python_seconds =sum(python_seconds)
 
 if verbose == True:
   logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
   logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
   logger.debug(config.limon + "Python script run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
+  logger.debug(config.limon + "Report build script run for: " + config.wine + "%.4f" % time_report_seconds + config.limon + " seconds")
