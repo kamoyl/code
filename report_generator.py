@@ -300,8 +300,8 @@ def convert_to_excel(title, exportFileName):
   start_time_excel_load = time.time()
   if verbose == True:
     logger.debug(config.wine + '    start: ' + config.yellow + title)
-  os.chdir(new_tmp)
-  workbook = Workbook(exportFileName, {'strings_to_numbers': True})
+  #os.chdir(new_tmp)
+  workbook = Workbook(new_tmp + '/' + exportFileName, {'strings_to_numbers': True})
   columns = {}
   rows = {}
   logger.info('Converting exported data into M$ Excel sheet (loading data): ' + config.cyan + export_file)
@@ -310,7 +310,8 @@ def convert_to_excel(title, exportFileName):
     if verbose == True:
       logger.debug(config.wine + '    start: ' + config.yellow + title)
   #for filename in report_output_list:
-    spamReader = csv.reader((open(filename, 'rb')), delimiter='~', quotechar='"')
+    spamReader = csv.reader((open(new_tmp + '/' + filename, 'rb')), delimiter='~', quotechar='"')
+    #spamReader = pandas.read_csv((open(filename, 'rb')), delimiter='~',header=0)
     newWorksheetName = filename.replace('.out', '')
     worksheet = workbook.add_worksheet(newWorksheetName)
     for rowx, row in enumerate(spamReader):
