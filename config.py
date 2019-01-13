@@ -94,7 +94,7 @@ def isOFFICEnetwork(local_ip):
 
 def outArchive(title, filename, srcenv, temporary_dir, *verbosity):
   #if verbose == True:
-  logger.debug(wine + 'start: ' + yellow + title)
+  logger.debug(wine + '    start: ' + yellow + title)
   archive_file_extension = ("_" + srcenv + "_" + current_timestamp + ".outdone")
   new_name = str(filename)[:-4] + archive_file_extension
   os.rename(temporary_dir + '/' + filename, temporary_dir + '/' + new_name)
@@ -103,14 +103,14 @@ def outArchive(title, filename, srcenv, temporary_dir, *verbosity):
         shutil.copyfileobj(new_name_in, new_name_out)
         os.remove(temporary_dir + '/' + new_name)
   #if verbose == True:
-  logger.debug(wine + 'end: ' + yellow + title)
+  logger.debug(wine + '      end: ' + yellow + title)
 
 def logArchive(title, filename, logs_dir):
   #if verbose == True:
-  logger.debug(wine + 'start: ' + yellow + title)
+  logger.debug(wine + '    start: ' + yellow + title)
   with open(logs_dir + '/' + filename, 'rb') as new_name_in:
     with gzip.open(logs_dir + '/' + filename + '.gz', 'wb') as new_name_out:
       shutil.copyfileobj(new_name_in, new_name_out)
       os.remove(logs_dir + '/' + filename)
   #if verbose == True:
-  logger.debug(wine + 'end: ' + yellow + title)
+  logger.debug(wine + '      end: ' + yellow + title)

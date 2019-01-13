@@ -238,7 +238,7 @@ with open(new_tmp + '/' + report_file2, "a+b") as report_file2_open:
 logger.info("Few manipulations for AWT extract data")
 def AWTweekly(title):
   if verbose == True:
-    logger.debug(config.wine + 'start: ' + config.yellow + title)
+    logger.debug(config.wine + '    start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
     for day_week_range in range(1,8):
       #date_week = str(datetime.datetime.now() - datetime.timedelta(days=day_week_range))[:10]
@@ -255,21 +255,21 @@ def AWTweekly(title):
         weekly_transpose.to_csv(weekly_transpose_result,index=True,header=1,sep='~')
         weekly_transpose_result.write('\n\n')
   if verbose == True:
-    logger.debug(config.wine + 'end: ' + config.yellow + title)
+    logger.debug(config.wine + '      end: ' + config.yellow + title)
 
 def AWTmonthly(title):
   if verbose == True:
-    logger.debug(config.wine + 'start: ' + config.yellow + title)
+    logger.debug(config.wine + '    start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
     df_AWT_grid_graph_monthly=pandas.read_csv(new_tmp + '/' + report_file8, "r",delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
     df_AWT_grid_graph_monthly_pivot = df_AWT_grid_graph_monthly.pivot_table(index='TheDate', columns='thistime', values=['WD_ETL','WD_OTHER'], aggfunc=numpy.sum)
     df_AWT_grid_graph_monthly_pivot.to_csv(new_tmp + '/' + report_file11,index=True,header=1,sep='~')
   if verbose == True:
-    logger.debug(config.wine + 'end: ' + config.yellow + title)
+    logger.debug(config.wine + '      end: ' + config.yellow + title)
 
 def AWTdaily(title):
   if verbose == True:
-    logger.debug(config.wine + 'start: ' + config.yellow + title)
+    logger.debug(config.wine + '    start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
     next(report_file8_open)
     day_date_list = [ ]
@@ -294,19 +294,17 @@ def AWTdaily(title):
         daily_transpose_final.write('\n\n')
   os.remove(new_tmp + '/' + report_file8)
   if verbose == True:
-    logger.debug(config.wine + 'end: ' + config.yellow + title)
+    logger.debug(config.wine + '      end: ' + config.yellow + title)
 
-start_time_excel_conversion = time.time()
-logger.info('Converting exported data into M$ Excel sheet: ' + config.cyan + export_file)
-
-def convert_to_excel(exportFileName, title):
+def convert_to_excel(title, exportFileName):
   start_time_excel_load = time.time()
   if verbose == True:
-    logger.debug(config.wine + 'start: ' + config.yellow + title)
+    logger.debug(config.wine + '    start: ' + config.yellow + title)
   os.chdir(new_tmp)
   workbook = Workbook(exportFileName, {'strings_to_numbers': True})
   columns = {}
   rows = {}
+  logger.info('Converting exported data into M$ Excel sheet (loading data): ' + config.cyan + export_file)
   for filename in report_output_list:
     spamReader = csv.reader((open(filename, 'rb')), delimiter='~', quotechar='"')
     newWorksheetName = filename.replace('.out', '')
@@ -316,13 +314,12 @@ def convert_to_excel(exportFileName, title):
         worksheet.write(rowx, colx, value)
         columns[newWorksheetName + '_columns']=colx+1
         rows[newWorksheetName + '_rows']=rowx+1
-  
   end_time_excel_load = time.time()
   excel_load_seconds = [end_time_excel_load, -start_time_excel_load]
   time_excel_load_seconds = sum(excel_load_seconds)
   if verbose == True:
     logger.debug(config.limon + "Data loaded to excel time: " + config.wine + "%.4f" % time_excel_load_seconds + config.limon +  " seconds")
- 
+  logger.info('Converting exported data into M$ Excel sheet (actual convert data): ' + config.cyan + export_file)
   # color scale in overall_system_activity
   format_green = workbook.add_format({'bg_color': '#C6EFCE',})
   format_orange = workbook.add_format({'bg_color': '#FFEB9C',})
@@ -652,19 +649,13 @@ def convert_to_excel(exportFileName, title):
   workbook.worksheets_objs.sort(key=lambda x: x.name)
   workbook.close()
   if verbose == True:
-    logger.debug(config.wine + 'end: ' + config.yellow + title)
-
-end_time_excel_conversion = time.time()
-excel_conversion_seconds = [end_time_excel_conversion, -start_time_excel_conversion]
-time_excel_conversion_seconds = sum(excel_conversion_seconds)
-if verbose == True:
-  logger.debug(config.limon + "Excel conversion time: " + config.wine + "%.4f" % time_excel_conversion_seconds + config.limon +  " seconds")
+    logger.debug(config.wine + '      end: ' + config.yellow + title)
 
 if __name__ == '__main__':
   weekly = mp.Process(target=AWTweekly, args=('AWT weekly spawned: ' + config.cyan + report_file10,))
   monthly = mp.Process(target=AWTmonthly, args=('AWT monthly spawned: ' + config.cyan + report_file11,))
   daily = mp.Process(target=AWTdaily, args=('AWT daily spawned: ' + config.cyan + report_file12,))
-  convert = mp.Process(target=convert_to_excel, args=(export_file,'Convertion of files into Excel sheet: ' + config.cyan + export_file))
+  convert = mp.Process(target=convert_to_excel, args=('Convertion of files into Excel sheet: ' + config.cyan + export_file, export_file, ))
 
   #w = threading.Thread(target=AWTweekly, args=('AWT weekly spawned',))
   #m = threading.Thread(target=AWTmonthly, args=('AWT monthly spawned',))
@@ -675,10 +666,14 @@ if __name__ == '__main__':
   monthly.join()
   weekly.join()
   daily.join()
-
+  start_time_excel_conversion = time.time()
   convert.start()
   convert.join()
-
+  end_time_excel_conversion = time.time()
+  excel_conversion_seconds = [end_time_excel_conversion, -start_time_excel_conversion]
+  time_excel_conversion_seconds = sum(excel_conversion_seconds)
+  if verbose == True:
+    logger.debug(config.limon + "Excel conversion time: " + config.wine + "%.4f" % time_excel_conversion_seconds + config.limon +  " seconds")
 #archiving out and log files:
 #carefully: for small files, running it as parallel threads is SLOWER then one-by-one about 3x
 #carefully: running it as parallel processes is SLOWER then one-by-one about 10x !
