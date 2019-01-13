@@ -305,7 +305,11 @@ def convert_to_excel(title, exportFileName):
   columns = {}
   rows = {}
   logger.info('Converting exported data into M$ Excel sheet (loading data): ' + config.cyan + export_file)
-  for filename in report_output_list:
+  #paralellism trial
+  def LoadingToWorkbook(title, filename):
+    if verbose == True:
+      logger.debug(config.wine + '    start: ' + config.yellow + title)
+  #for filename in report_output_list:
     spamReader = csv.reader((open(filename, 'rb')), delimiter='~', quotechar='"')
     newWorksheetName = filename.replace('.out', '')
     worksheet = workbook.add_worksheet(newWorksheetName)
@@ -314,6 +318,11 @@ def convert_to_excel(title, exportFileName):
         worksheet.write(rowx, colx, value)
         columns[newWorksheetName + '_columns']=colx+1
         rows[newWorksheetName + '_rows']=rowx+1
+    if verbose == True:
+      logger.debug(config.wine + '      end: ' + config.yellow + title)
+  joblib_method = "threads"
+  Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(LoadingToWorkbook)('loading in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file) for report_file in report_output_list )
+  #paralellizm trial
   end_time_excel_load = time.time()
   excel_load_seconds = [end_time_excel_load, -start_time_excel_load]
   time_excel_load_seconds = sum(excel_load_seconds)
