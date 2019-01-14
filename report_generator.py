@@ -18,7 +18,8 @@ import time
 #import numpy
 #import csv
 #import glob
-from joblib import Parallel, delayed
+#from joblib import Parallel, delayed
+import joblib
 #from xlsxwriter import Workbook
 #from xlsxwriter.utility import xl_rowcol_to_cell
 
@@ -39,6 +40,9 @@ logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG',milliseconds=True)
 
 start_time_template_seconds = time.time()
+#list of possible reports:
+report_number_list=[302]
+report_number_list_len = len(report_number_list)
 
 def usage():
   print(config.cyan + 'Usage:\n\n')
@@ -152,14 +156,11 @@ os.environ["VAR"] = new_var
 os.environ["LOG"] = new_log
 os.environ["SCRIPTS_HOME"] = scripts_home
 
-report_number_list=[302]
-report_number_list_len = len(report_number_list)
-
 if not report_number:
   logger.error('Report number MUST be set with: ' + config.cyan + '-n, --report_number=')
   exit(1)
 elif report_number == "302":
-  logger.info('Preparing report ' + config.cyan + report_number + config.white + ' files for ' + config.cyan + report_date)
+  logger.info('Preparing report ' + config.cyan + report_number + config.white + ' for ' + config.cyan + report_date)
   report_file1 = "7_Ampconfig.out" 
   report_file2 = "1_Diskspace.out"
   report_file3 = "2_Diskspace_trend.out"
@@ -225,7 +226,7 @@ if verbose == True:
 #running appropriate BTEQ script
 start_time_bash_seconds = time.time()
 try:
-  subprocess.check_call(scripts_home + '/bteq/report_' + report_number + '.bteq', shell=False, stdout = subprocess.PIPE)
+  #subprocess.check_call(scripts_home + '/bteq/report_' + report_number + '.bteq', shell=False, stdout = subprocess.PIPE)
   if verbose == True:
     logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file1)
 except:
@@ -239,14 +240,18 @@ time_bash_seconds = sum(bash_seconds)
 start_time_report_seconds = time.time()
 #import report_302
 #try:
-exec(open(scripts_home + '/report_' + report_number + '.py').read())
+report_file_open = open(scripts_home + '/report_' + report_number + '.py')
+exec(report_file_open).read()
+report_file_open.close()
 #except:
 #  logger.error("Excel conversion script failed")
 #  sys.exit(1)
 end_time_report_seconds = time.time()
 report_seconds = [end_time_report_seconds, -start_time_report_seconds]
 time_report_seconds = sum(report_seconds)
+#few remaning things: emailing, confluence page adding attachements etc.
 
+##few remaning things: emailing, confluence page adding attachements etc.
 start_time_compression = time.time()
 #one-by-one:
 #for report_file in report_output_list:
@@ -256,13 +261,11 @@ start_time_compression = time.time()
 #in parallel
 #joblib_method = "processes"
 joblib_method = "threads"
-Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.outArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
-Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
+joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.outArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
+#joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
 end_time_compression = time.time()
 compression_seconds = [end_time_compression, -start_time_compression]
 time_compression_seconds = sum(compression_seconds)
-if verbose == True:
-  logger.debug(config.limon + "compression time: " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
 
 end_time_template_seconds = time.time()
 template_seconds = [end_time_template_seconds, -start_time_template_seconds]
@@ -274,5 +277,6 @@ time_python_seconds =sum(python_seconds)
 if verbose == True:
   logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
   logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
-  logger.debug(config.limon + "Python script run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
-  logger.debug(config.limon + "Report build script run for: " + config.wine + "%.4f" % time_report_seconds + config.limon + " seconds")
+  logger.debug(config.limon + "Python script (except report build) run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
+  logger.debug(config.limon + "Compression logs and out files time: " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
+  logger.debug(config.limon + "Report build python script run for: " + config.wine + "%.4f" % time_report_seconds + config.limon + " seconds")
