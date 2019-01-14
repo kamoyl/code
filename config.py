@@ -20,6 +20,7 @@ blue = '\x1b[38;2;000;128;255m'
 cyan = '\x1b[38;2;000;255;255m'
 green = '\x1b[38;2;000;128;000m'
 yellow = '\x1b[38;2;255;255;000m'
+white = '\x1b[38;255;255;255;000m'
 
 #few important static variables commonly used
 current_directory = os.getcwd()
@@ -48,6 +49,7 @@ os.environ["BLUE"] = blue
 os.environ["CYAN"] = cyan
 os.environ["GREEN"] = green
 os.environ["YELLOW"] = yellow
+os.environ["WHITE"] = white
 #some of important variables for being recognized in BASH subprocesses
 user_home_dir = os.environ['HOME']
 os.environ["CURRENT_TIMESTAMP"] = current_timestamp

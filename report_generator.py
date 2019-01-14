@@ -97,12 +97,11 @@ if not env:
   logger.error('Source environment MUST be set with: ' + config.cyan + '-s, --source_env=<PROD|PROD10|PROD11|DTA|host>')
   exit()
 
-if env == 'PROD':
+if env != 'PROD':
+  logger.error('Source env MUST be PROD now')
+  exit(1)
+else:
   print('environment is: ' + env)
-
-if not report_number:
-  logger.error('Report number MUST be set with: ' + config.cyan + '-n, --report_number=')
-  exit()
 
 if not report_date:
   report_date = config.yesterday_date
@@ -120,13 +119,14 @@ if output:
       os.mkdir(new_log)
       if verbose == True:
         logger.debug("Successfully created the directory: " + config.blue + new_var)
-        logger.debug("all LOGs and TMPs will go then to: "+ config.blue + output)
+        logger.debug("all LOGs will go to: " + config.blue + new_log + config.lime + " and TMPs will go then to: " + config.blue + new_tmp)
     except OSError as err:
       logger.error("Creating directory failed - possibly permission denied")
       exit(2)
   else:
     if verbose == True:
       logger.debug("Directory for tmp and logs exists: " + config.blue + new_var)
+      logger.debug("all LOGs will go to: " + config.blue + new_log + config.lime + " and TMPs will go then to: " + config.blue + new_tmp)
 else:
   new_var = config.user_home_dir + '/var'
   new_tmp = new_var + '/' + 'tmp'
@@ -138,41 +138,70 @@ else:
       os.mkdir(new_log)
       if verbose == True:
         logger.debug("Successfully created the directory: " + config.blue + new_var)
-        logger.debug("all LOGs and TMPs will go then to: " + config.blue + new_var)
+        logger.debug("all LOGs will go to: " + config.blue + new_log + config.lime + " and TMPs will go then to: " + config.blue + new_tmp)
     except OSError as err:
       logger.error("Creating directory failed - possibly permission denied")
       exit(2)
   else:
     if verbose == True:
       logger.debug("Directory for tmp and logs exists: " + config.blue + new_var)
+      logger.debug("all LOGs will go to: " + config.blue + new_log + config.lime + " and TMPs will go then to: " + config.blue + new_tmp)
 
 os.environ["TMP"] = new_tmp
 os.environ["VAR"] = new_var
 os.environ["LOG"] = new_log
 os.environ["SCRIPTS_HOME"] = scripts_home
-report_file1 = "7_Ampconfig.out" 
-report_file2 = "1_Diskspace.out"
-report_file3 = "2_Diskspace_trend.out"
-report_file4 = "8_cpu_Hourly_Details.out"
-report_file5 = "3_cpu_COD_busy_monthly.out"
-report_file6 = "9_cpu_Weekday_Details.out"
-report_file7 = "4_cpu_ImpactCPU_monthly.out"
-report_file8 = "6_AWT_grid_graph.out"
-report_file9 = "5_flow_control_heat_map.out"
-report_file10 = "6_AWT_grid_graph_weekly.out"
-report_file11 = "6_AWT_grid_graph_monthly.out"
-report_file12 = "6_AWT_grid_graph_daily.out"
-report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file9, report_file10, report_file11, report_file12]
-report_output_list_len = len(report_output_list)
-confluence_pageid = "62013301"
-confluence_history_pageid = "62013304"
-report_title = (report_number + " - capacity weekly report on: " + env)
-export_file_extension = (env + "_" + report_date + ".xlsx")
-export_file = (report_number + "_Capacity_weekly_" + export_file_extension)
-log_file_extension = (config.current_timestamp + ".log")
-log_file1 = (report_title + "_" + log_file_extension)
-log_file_list = [log_file1]
-log_file_list_len = len(log_file_list)
+
+report_number_list=[302]
+report_number_list_len = len(report_number_list)
+
+if not report_number:
+  logger.error('Report number MUST be set with: ' + config.cyan + '-n, --report_number=')
+  exit(1)
+elif report_number == "302":
+  logger.info('Preparing report ' + config.cyan + report_number + config.white + ' files for ' + config.cyan + report_date)
+  report_file1 = "7_Ampconfig.out" 
+  report_file2 = "1_Diskspace.out"
+  report_file3 = "2_Diskspace_trend.out"
+  report_file4 = "8_cpu_Hourly_Details.out"
+  report_file5 = "3_cpu_COD_busy_monthly.out"
+  report_file6 = "9_cpu_Weekday_Details.out"
+  report_file7 = "4_cpu_ImpactCPU_monthly.out"
+  report_file8 = "6_AWT_grid_graph.out"
+  report_file9 = "5_flow_control_heat_map.out"
+  report_file10 = "6_AWT_grid_graph_weekly.out"
+  report_file11 = "6_AWT_grid_graph_monthly.out"
+  report_file12 = "6_AWT_grid_graph_daily.out"
+  os.environ["REPORT_FILE1"] = report_file1
+  os.environ["REPORT_FILE2"] = report_file2
+  os.environ["REPORT_FILE3"] = report_file3
+  os.environ["REPORT_FILE4"] = report_file4
+  os.environ["REPORT_FILE5"] = report_file5
+  os.environ["REPORT_FILE6"] = report_file6
+  os.environ["REPORT_FILE7"] = report_file7
+  os.environ["REPORT_FILE8"] = report_file8
+  os.environ["REPORT_FILE9"] = report_file9
+  report_output_list = [report_file1, report_file2, report_file3, report_file4, report_file5, report_file6, report_file7, report_file9, report_file10, report_file11, report_file12]
+  report_output_list_len = len(report_output_list)
+  confluence_pageid = "62013301"
+  confluence_history_pageid = "62013304"
+  os.environ["CONFLUENCE_PAGEID"] = confluence_pageid
+  os.environ["CONFLUENCE_HISTORY_PAGEID"] = confluence_history_pageid
+  report_title = (report_number + " - capacity weekly report on: " + env)
+  os.environ["REPORT_TITLE"] = report_title
+  export_file_extension = (env + "_" + report_date + ".xlsx")
+  export_file = (report_number + "_Capacity_weekly_" + export_file_extension)
+  os.environ["EXPORT_FILE_EXTENSION"] = export_file_extension
+  os.environ["EXPORT_FILE"] = export_file
+  log_file_extension = (config.current_timestamp + ".log")
+  log_file1 = (report_title + "_" + log_file_extension)
+  os.environ["LOG_FILE_EXTENSION"] = log_file_extension
+  os.environ["LOG_FILE1"] = log_file1
+  log_file_list = [log_file1]
+  log_file_list_len = len(log_file_list)
+else:
+  logger.error('Wrong or none-existing report number, exiting')
+  exit(1)
 
 config.isOFFICEnetwork(config.default_local_ip)
 
@@ -193,27 +222,10 @@ if verbose == True:
     if verbose == True:
       logger.debug(config.blue + 'not connected to the office')
 
-os.environ["REPORT_FILE1"] = report_file1
-os.environ["REPORT_FILE2"] = report_file2
-os.environ["REPORT_FILE3"] = report_file3
-os.environ["REPORT_FILE4"] = report_file4
-os.environ["REPORT_FILE5"] = report_file5
-os.environ["REPORT_FILE6"] = report_file6
-os.environ["REPORT_FILE7"] = report_file7
-os.environ["REPORT_FILE8"] = report_file8
-os.environ["REPORT_FILE9"] = report_file9
-os.environ["EXPORT_FILE"] = export_file
-os.environ["CONFLUENCE_PAGEID"] = confluence_pageid
-os.environ["CONFLUENCE_HISTORY_PAGEID"] = confluence_history_pageid
-os.environ["REPORT_TITLE"] = report_title
-os.environ["EXPORT_FILE_EXTENSION"] = export_file_extension
-os.environ["LOG_FILE_EXTENSION"] = log_file_extension
-os.environ["LOG_FILE1"] = log_file1
-
 #running appropriate BTEQ script
 start_time_bash_seconds = time.time()
 try:
-  subprocess.check_call(scripts_home + '/bteq/report_302.bteq', shell=False, stdout = subprocess.PIPE)
+  subprocess.check_call(scripts_home + '/bteq/report_' + report_number + '.bteq', shell=False, stdout = subprocess.PIPE)
   if verbose == True:
     logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file1)
 except:
@@ -223,11 +235,11 @@ end_time_bash_seconds = time.time()
 bash_seconds = [end_time_bash_seconds, -start_time_bash_seconds]
 time_bash_seconds = sum(bash_seconds)
 
-#running appropriate script for bnuilding final report based on BTEQ data
+#running appropriate script for building final report based on BTEQ data
 start_time_report_seconds = time.time()
 #import report_302
 #try:
-exec(open(scripts_home + '/report_302.py').read())
+exec(open(scripts_home + '/report_' + report_number + '.py').read())
 #except:
 #  logger.error("Excel conversion script failed")
 #  sys.exit(1)
