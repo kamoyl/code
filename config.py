@@ -6,7 +6,7 @@ import logging
 import coloredlogs
 import socket
 from multiprocessing import cpu_count
-from netaddr import IPNetwork, IPAddress
+import netaddr
 import getopt
 import gzip
 import shutil
@@ -87,11 +87,11 @@ def get_ip():
 default_local_ip = get_ip()
 
 def isOFFICEnetwork(local_ip):
-  if IPAddress(local_ip) in IPNetwork(office_network):
+  if netaddr.IPAddress(local_ip) in netaddr.IPNetwork(office_network):
     office=1
-  elif IPAddress(local_ip) in IPNetwork(vpn1_network):
+  elif netaddr.IPAddress(local_ip) in netaddr.IPNetwork(vpn1_network):
     vpn=1
-  elif IPAddress(local_ip) in IPNetwork(vpn2_network):
+  elif netaddr.IPAddress(local_ip) in netaddr.IPNetwork(vpn2_network):
     vpn=1
 
 def outArchive(title, filename, srcenv, temporary_dir, *verbosity):
