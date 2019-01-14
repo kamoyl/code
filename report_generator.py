@@ -226,11 +226,11 @@ time_bash_seconds = sum(bash_seconds)
 #running appropriate script for bnuilding final report based on BTEQ data
 start_time_report_seconds = time.time()
 #import report_302
-try:
-  exec(open(scripts_home + '/report_302.py').read())
-except:
-  logger.error("Excel conversion script failed")
-  sys.exit(1)
+#try:
+exec(open(scripts_home + '/report_302.py').read())
+#except:
+#  logger.error("Excel conversion script failed")
+#  sys.exit(1)
 end_time_report_seconds = time.time()
 report_seconds = [end_time_report_seconds, -start_time_report_seconds]
 time_report_seconds = sum(report_seconds)

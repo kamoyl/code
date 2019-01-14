@@ -365,20 +365,20 @@ def convert_to_excel(title, exportFileName):
   worksheet_11_AWT_grid_graph_weekly.write(42, 0, 'Avg WD_ETL')
   worksheet_11_AWT_grid_graph_weekly.write(43, 0, 'Avg WD_OTHER')
   for col in xrange(1, 144):
-    cell1 = xlsxwriter.xl_rowcol_to_cell(2, col)
-    cell2 = xlsxwriter.xl_rowcol_to_cell(8, col)
-    cell3 = xlsxwriter.xl_rowcol_to_cell(14, col)
-    cell4 = xlsxwriter.xl_rowcol_to_cell(20, col)
-    cell5 = xlsxwriter.xl_rowcol_to_cell(26, col)
-    cell6 = xlsxwriter.xl_rowcol_to_cell(32, col)
-    cell7 = xlsxwriter.xl_rowcol_to_cell(38, col)
-    cell11 = xlsxwriter.xl_rowcol_to_cell(3, col)
-    cell21 = xlsxwriter.xl_rowcol_to_cell(9, col)
-    cell31 = xlsxwriter.xl_rowcol_to_cell(15, col)
-    cell41 = xlsxwriter.xl_rowcol_to_cell(21, col)
-    cell51 = xlsxwriter.xl_rowcol_to_cell(27, col)
-    cell61 = xlsxwriter.xl_rowcol_to_cell(33, col)
-    cell71 = xlsxwriter.xl_rowcol_to_cell(39, col)
+    cell1 = xlsxwriter.utility.xl_rowcol_to_cell(2, col)
+    cell2 = xlsxwriter.utility.xl_rowcol_to_cell(8, col)
+    cell3 = xlsxwriter.utility.xl_rowcol_to_cell(14, col)
+    cell4 = xlsxwriter.utility.xl_rowcol_to_cell(20, col)
+    cell5 = xlsxwriter.utility.xl_rowcol_to_cell(26, col)
+    cell6 = xlsxwriter.utility.xl_rowcol_to_cell(32, col)
+    cell7 = xlsxwriter.utility.xl_rowcol_to_cell(38, col)
+    cell11 = xlsxwriter.utility.xl_rowcol_to_cell(3, col)
+    cell21 = xlsxwriter.utility.xl_rowcol_to_cell(9, col)
+    cell31 = xlsxwriter.utility.xl_rowcol_to_cell(15, col)
+    cell41 = xlsxwriter.utility.xl_rowcol_to_cell(21, col)
+    cell51 = xlsxwriter.utility.xl_rowcol_to_cell(27, col)
+    cell61 = xlsxwriter.utility.xl_rowcol_to_cell(33, col)
+    cell71 = xlsxwriter.utility.xl_rowcol_to_cell(39, col)
     worksheet_11_AWT_grid_graph_weekly.write_formula(42, col, '=AVERAGE(' + str(cell1) + ',' + str(cell2) + ',' + str(cell3) + ',' + str(cell4) + ',' + str(cell5) + ',' + str(cell6) + ',' + str(cell7) + ')')
     worksheet_11_AWT_grid_graph_weekly.write_formula(43, col, '=AVERAGE(' + str(cell11) + ',' + str(cell21) + ',' + str(cell31) + ',' + str(cell41) + ',' + str(cell51) + ',' + str(cell61) + ',' + str(cell71) + ')')
   worksheet_11_AWT_grid_graph_weekly.conditional_format('B43:EN44', {'type':   'cell',
@@ -417,8 +417,8 @@ def convert_to_excel(title, exportFileName):
   worksheet_12_AWT_grid_graph_monthly.merge_range('C1:EO1', None, merge_format)
   worksheet_12_AWT_grid_graph_monthly.merge_range('EQ1:KC1', None, merge_format)
   for col in xrange(1, 289):
-    cellX = xlsxwriter.xl_rowcol_to_cell(3, col)
-    cellY = xlsxwriter.xl_rowcol_to_cell(33, col)
+    cellX = xlsxwriter.utility.xl_rowcol_to_cell(3, col)
+    cellY = xlsxwriter.utility.xl_rowcol_to_cell(33, col)
     worksheet_12_AWT_grid_graph_monthly.write_formula(35, col, '=AVERAGE(' + str(cellX) + ':' + str(cellY) + ')')
   worksheet_12_AWT_grid_graph_monthly.conditional_format('B36:KC36', {'type':   'cell',
     'criteria': '<=',
@@ -471,7 +471,6 @@ def convert_to_excel(title, exportFileName):
   if verbose == True:
     logger.debug(config.wine + '      end: ' + config.yellow + title)
 
-#if __name__ == '__main__':
 weekly = mp.Process(target=AWTweekly, args=('AWT weekly spawned: ' + config.cyan + report_file10,))
 monthly = mp.Process(target=AWTmonthly, args=('AWT monthly spawned: ' + config.cyan + report_file11,))
 daily = mp.Process(target=AWTdaily, args=('AWT daily spawned: ' + config.cyan + report_file12,))
