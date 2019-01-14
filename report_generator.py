@@ -95,6 +95,7 @@ for o, a in opts:
     os.environ["REPORT_NUMBER"] = report_number
   elif o in ("-m", "--multiload"):
     multiload = True
+    logger.warning('Multiprocessing/multithreading and run in separated processes enabled')
   elif o in ("-N", "--nobteq"):
     nobteq = True
   else:
