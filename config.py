@@ -67,12 +67,13 @@ coloredlogs.install(level='DEBUG',milliseconds=True)
 #funtions used accros all scripts
 #general usage definition - accros all scripts, more specific one will have this one as a part
 def usage():
-  print('                [-N, --nobteq' + green + ' runs report WITHOUT bteq script (only python)' + cyan + ']\n'
-                        '                [-m, --multiload' + green + ' multiprocessing/multithreading is enabled' + cyan + ']\n' +
+  print('                [-N, --nobteq]' + green + ' runs report WITHOUT bteq script (only python)\n' + cyan +
+                        '                [-m, --multiload]' + green + ' multiprocessing/multithreading is enabled\n' + cyan +
                         '                [-o, --output=' + green + 'DIRECTORY to which will go all LOGs and TMPs' + cyan + ']\n' +
                  blue + '                              default: ' + cyan + os.environ['HOME'] + '/var\n' + 
-                        '                [-v, --verbose\n' +
-                        '                [-h, --help\n')
+                        '                [-T, --show-time]\n' +
+                        '                [-v, --verbose]\n' +
+                        '                [-h, --help]\n')
 
 def get_ip():
   s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -97,6 +98,21 @@ def isOFFICEnetwork(local_ip):
     vpn=1
 
 def outArchive(title, filename, srcenv, temporary_dir, *verbosity):
+  archive_file_extension = ("_" + srcenv + "_" + current_timestamp + ".outdone")
+  new_name = str(filename)[:-4] + archive_file_extension
+  os.rename(temporary_dir + '/' + filename, temporary_dir + '/' + new_name)
+  with open(temporary_dir + '/' + new_name, 'rb') as new_name_in:
+      with gzip.open(temporary_dir + '/' + new_name + '.gz', 'wb') as new_name_out:
+        shutil.copyfileobj(new_name_in, new_name_out)
+        os.remove(temporary_dir + '/' + new_name)
+
+def logArchive(title, filename, logs_dir):
+  with open(logs_dir + '/' + filename, 'rb') as new_name_in:
+    with gzip.open(logs_dir + '/' + filename + '.gz', 'wb') as new_name_out:
+      shutil.copyfileobj(new_name_in, new_name_out)
+      os.remove(logs_dir + '/' + filename)
+
+def outArchiveV(title, filename, srcenv, temporary_dir, *verbosity):
   #if verbose == True:
   logger.debug(wine + '    start: ' + yellow + title)
   archive_file_extension = ("_" + srcenv + "_" + current_timestamp + ".outdone")
@@ -109,7 +125,7 @@ def outArchive(title, filename, srcenv, temporary_dir, *verbosity):
   #if verbose == True:
   logger.debug(wine + '      end: ' + yellow + title)
 
-def logArchive(title, filename, logs_dir):
+def logArchiveV(title, filename, logs_dir):
   #if verbose == True:
   logger.debug(wine + '    start: ' + yellow + title)
   with open(logs_dir + '/' + filename, 'rb') as new_name_in:

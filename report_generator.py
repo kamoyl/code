@@ -54,7 +54,7 @@ def usage():
   config.usage()
 
 try:
-  opts, args = getopt.getopt(sys.argv[1:], "hs:o:d:u:n:vmN", ["help", "source_env=", "output=", "date=", "user=", "report_number=", "verbose", "multiload", "nobteq"])
+  opts, args = getopt.getopt(sys.argv[1:], "hs:o:d:u:n:vmNT", ["help", "source_env=", "output=", "date=", "user=", "report_number=", "verbose", "multiload", "nobteq", "show-time"])
 except getopt.GetoptError as err:
   print str(err)  # will print something like "option -a not recognized"
   usage()
@@ -62,6 +62,7 @@ except getopt.GetoptError as err:
 output = None
 verbose = False
 multiload = False
+showtime = False
 nobteq = False
 user = None
 report_number = None
@@ -98,12 +99,19 @@ for o, a in opts:
     logger.warning('Multiprocessing/multithreading and run in separated processes enabled')
   elif o in ("-N", "--nobteq"):
     nobteq = True
+  elif o in ("-T", "--show-time"):
+    showtime = True
   else:
-    assert False, "unhandled option"
+    logger.error('Wrong option: ')
+    usage()
+    #assert False, "unhandled option"
 
 if not env:
   logger.error('Source environment MUST be set with: ' + config.cyan + '-s, --source_env=<PROD|PROD10|PROD11|DTA|host>')
   exit()
+
+if multiload == False:
+  logger.warning('Multiprocessing/multithreading and run in separated processes disabled')
 
 if env != 'PROD':
   logger.error('Source env MUST be PROD now')
@@ -230,7 +238,7 @@ if verbose == True:
 #running appropriate BTEQ script
 start_time_bash_seconds = time.time()
 if nobteq == True:
-  logger.warning('BTEQ and output log will be omitted')
+  logger.warning('BTEQ will be omitted')
 else:
   try:
     subprocess.check_call(scripts_home + '/bteq/report_' + report_number + '.bteq', shell=False, stdout = subprocess.PIPE)
@@ -260,19 +268,35 @@ time_report_seconds = sum(report_seconds)
 
 #few remaning things: emailing, confluence page adding attachements etc.
 start_time_compression = time.time()
-#one-by-one:
-#for report_file in report_output_list:
-#  config.outArchive('archiving one-by-one: ' + config.cyan + report_file, report_file, env, new_tmp)
-#for log_file in log_file_list:
-#  config.logArchive('archiving one-by-one: ' + config.cyan + log_file, log_file, new_log)
-#in parallel
-#joblib_method = "processes"
-joblib_method = "threads"
-joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.outArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
-if nobteq == True:
-  logger.warning('BTEQ and output log will be omitted')
+
+if multiload == True:
+  #joblib_method = "processes"
+  joblib_method = "threads"
+  if verbose == True:
+    joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.outArchiveV)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
+  else:
+    joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.outArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
+  if nobteq == True:
+    logger.warning('log archiving will be omitted')
+  else:
+    if verbose == True:
+      joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.logArchiveV)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
+    else:
+      joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
 else:
-  joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
+  for report_file in report_output_list:
+    if verbose == True:
+      config.outArchiveV('archiving (same process/thread): ' + config.cyan + report_file, report_file, env, new_tmp)
+    else:
+      config.outArchive('archiving (same process/thread): ' + config.cyan + report_file, report_file, env, new_tmp)
+  if nobteq == True:
+    logger.warning('log archiving will be omitted')
+  else:
+    for log_file in log_file_list:
+      if verbose == True:
+        config.logArchiveV('archiving (same process/thread): ' + config.cyan + log_file, log_file, new_log)
+      else:
+        config.logArchive('archiving (same process/thread): ' + config.cyan + log_file, log_file, new_log)
 
 end_time_compression = time.time()
 compression_seconds = [end_time_compression, -start_time_compression]
@@ -285,9 +309,12 @@ time_template_seconds = sum(template_seconds)
 python_seconds = [time_template_seconds, -time_bash_seconds, -time_report_seconds]
 time_python_seconds =sum(python_seconds)
 
-if verbose == True:
+if (verbose == True) or (showtime == True):
   logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
   logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
   logger.debug(config.limon + "Python script (except report build) run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
-  logger.debug(config.limon + "Compression logs and out files time: " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
+  if nobteq == True:
+    logger.debug(config.limon + "Compression out files time: " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
+  else:
+    logger.debug(config.limon + "Compression logs and out files time: " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
   logger.debug(config.limon + "Report build python script run for: " + config.wine + "%.4f" % time_report_seconds + config.limon + " seconds")
