@@ -2,25 +2,26 @@
 # -*- coding: utf-8 -*-
 #from __main__ import *
 import sys
-import getopt
+#import getopt
 import logging
 import coloredlogs
 import os
 import datetime
-import subprocess
+#import subprocess
 import time
 import pandas
-import re
-import gzip
-import shutil
+#import re
+#import gzip
+#import shutil
 import multiprocessing as mp
 import threading
 import numpy
 import csv
 #import glob
 from joblib import Parallel, delayed
-from xlsxwriter import Workbook
-from xlsxwriter.utility import xl_rowcol_to_cell
+#from xlsxwriter import Workbook
+import xlsxwriter
+#from xlsxwriter.utility import xl_rowcol_to_cell
 
 import config
 
@@ -113,7 +114,7 @@ def convert_to_excel(title, exportFileName):
   start_time_excel_load = time.time()
   if verbose == True:
     logger.debug(config.wine + '    start: ' + config.yellow + title)
-  workbook = Workbook(new_tmp + '/' + exportFileName, {'strings_to_numbers': True})
+  workbook = xlsxwriter.Workbook(new_tmp + '/' + exportFileName, {'strings_to_numbers': True})
   columns = {}
   rows = {}
   logger.info('Converting exported data into M$ Excel sheet (loading data): ' + config.cyan + export_file)
@@ -364,20 +365,20 @@ def convert_to_excel(title, exportFileName):
   worksheet_11_AWT_grid_graph_weekly.write(42, 0, 'Avg WD_ETL')
   worksheet_11_AWT_grid_graph_weekly.write(43, 0, 'Avg WD_OTHER')
   for col in xrange(1, 144):
-    cell1 = xl_rowcol_to_cell(2, col)
-    cell2 = xl_rowcol_to_cell(8, col)
-    cell3 = xl_rowcol_to_cell(14, col)
-    cell4 = xl_rowcol_to_cell(20, col)
-    cell5 = xl_rowcol_to_cell(26, col)
-    cell6 = xl_rowcol_to_cell(32, col)
-    cell7 = xl_rowcol_to_cell(38, col)
-    cell11 = xl_rowcol_to_cell(3, col)
-    cell21 = xl_rowcol_to_cell(9, col)
-    cell31 = xl_rowcol_to_cell(15, col)
-    cell41 = xl_rowcol_to_cell(21, col)
-    cell51 = xl_rowcol_to_cell(27, col)
-    cell61 = xl_rowcol_to_cell(33, col)
-    cell71 = xl_rowcol_to_cell(39, col)
+    cell1 = xlsxwriter.xl_rowcol_to_cell(2, col)
+    cell2 = xlsxwriter.xl_rowcol_to_cell(8, col)
+    cell3 = xlsxwriter.xl_rowcol_to_cell(14, col)
+    cell4 = xlsxwriter.xl_rowcol_to_cell(20, col)
+    cell5 = xlsxwriter.xl_rowcol_to_cell(26, col)
+    cell6 = xlsxwriter.xl_rowcol_to_cell(32, col)
+    cell7 = xlsxwriter.xl_rowcol_to_cell(38, col)
+    cell11 = xlsxwriter.xl_rowcol_to_cell(3, col)
+    cell21 = xlsxwriter.xl_rowcol_to_cell(9, col)
+    cell31 = xlsxwriter.xl_rowcol_to_cell(15, col)
+    cell41 = xlsxwriter.xl_rowcol_to_cell(21, col)
+    cell51 = xlsxwriter.xl_rowcol_to_cell(27, col)
+    cell61 = xlsxwriter.xl_rowcol_to_cell(33, col)
+    cell71 = xlsxwriter.xl_rowcol_to_cell(39, col)
     worksheet_11_AWT_grid_graph_weekly.write_formula(42, col, '=AVERAGE(' + str(cell1) + ',' + str(cell2) + ',' + str(cell3) + ',' + str(cell4) + ',' + str(cell5) + ',' + str(cell6) + ',' + str(cell7) + ')')
     worksheet_11_AWT_grid_graph_weekly.write_formula(43, col, '=AVERAGE(' + str(cell11) + ',' + str(cell21) + ',' + str(cell31) + ',' + str(cell41) + ',' + str(cell51) + ',' + str(cell61) + ',' + str(cell71) + ')')
   worksheet_11_AWT_grid_graph_weekly.conditional_format('B43:EN44', {'type':   'cell',
@@ -416,8 +417,8 @@ def convert_to_excel(title, exportFileName):
   worksheet_12_AWT_grid_graph_monthly.merge_range('C1:EO1', None, merge_format)
   worksheet_12_AWT_grid_graph_monthly.merge_range('EQ1:KC1', None, merge_format)
   for col in xrange(1, 289):
-    cellX = xl_rowcol_to_cell(3, col)
-    cellY = xl_rowcol_to_cell(33, col)
+    cellX = xlsxwriter.xl_rowcol_to_cell(3, col)
+    cellY = xlsxwriter.xl_rowcol_to_cell(33, col)
     worksheet_12_AWT_grid_graph_monthly.write_formula(35, col, '=AVERAGE(' + str(cellX) + ':' + str(cellY) + ')')
   worksheet_12_AWT_grid_graph_monthly.conditional_format('B36:KC36', {'type':   'cell',
     'criteria': '<=',
