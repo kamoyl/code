@@ -55,8 +55,12 @@ def AWTweekly(title):
   if verbose == True:
     logger.debug(config.wine + '    start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
-    for day_week_range in range(1,8):
-      date_week = (report_date_long - datetime.timedelta(days=day_week_range)).strftime("%Y-%m-%d")
+    def AWTweeklyPAR(title, day_week):
+      if verbose == True:
+        logger.debug(config.wine + '    start: ' + config.yellow + title)
+    #for day_week_range in range(1,8):
+      #date_week = (report_date_long - datetime.timedelta(days=day_week_range)).strftime("%Y-%m-%d")
+      date_week = (report_date_long - datetime.timedelta(days=day_week)).strftime("%Y-%m-%d")
       report_file8_open.seek(0,0)
       week_prep_variable = ""
       for week_line in report_file8_open:
@@ -68,6 +72,10 @@ def AWTweekly(title):
       with open(new_tmp + '/' + report_file10, "a+b") as weekly_transpose_result:
         weekly_transpose.to_csv(weekly_transpose_result,index=True,header=1,sep='~')
         weekly_transpose_result.write('\n\n')
+      if verbose == True:
+        logger.debug(config.wine + '    end: ' + config.yellow + title)
+    joblib_method = "processes"
+    joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTweeklyPAR)('AWT weekly in range parallel (' + joblib_method + '): ' + config.cyan  + str(day_week_range), day_week_range) for day_week_range in range(1,8) )
   if verbose == True:
     logger.debug(config.wine + '      end: ' + config.yellow + title)
 
