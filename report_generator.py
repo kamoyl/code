@@ -51,19 +51,21 @@ def usage():
                         '                [-d, --date=' + config.green + '<DATE(YYYY-MM-DD)/WEEK_NR(XX)>' + config.cyan + ']\n' + 
                         '                [-u, --user=' + config.green + 'TECH_USER' + config.cyan + ']\n' +  
                         '                [-n, --report_number=' + config.green + 'REPORT_NUMBER' + config.cyan + ']\n\n' +  
+                        '                [-m, --multi=' + config.green + '[0/1]' + config.cyan + ']\n\n' +
                         '                [-o, --output=' + config.green + 'DIRECTORY' + config.cyan + ']\n' +
                         '                [-v, --verbose\n' +  
                         '                [-h, --help\n')
   config.usage()
 
 try:
-  opts, args = getopt.getopt(sys.argv[1:], "hs:o:d:u:n:v", ["help", "source_env=", "output=", "date=", "user=", "report_number=", "verbose"])
+  opts, args = getopt.getopt(sys.argv[1:], "hs:o:d:u:n:vm", ["help", "source_env=", "output=", "date=", "user=", "report_number=", "verbose", "multi"])
 except getopt.GetoptError as err:
   print str(err)  # will print something like "option -a not recognized"
   usage()
   sys.exit(2)
 output = None
 verbose = False
+multiload = False
 user = None
 report_number = None
 report_date = None
@@ -94,6 +96,8 @@ for o, a in opts:
   elif o in ("-n", "--report_number"):
     report_number = a
     os.environ["REPORT_NUMBER"] = report_number
+  elif o in ("-m", "--multi"):
+    multiload = True
   else:
     assert False, "unhandled option"
 
