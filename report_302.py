@@ -18,7 +18,7 @@ import threading
 import numpy
 import csv
 #import glob
-from joblib import Parallel, delayed
+import joblib
 #from xlsxwriter import Workbook
 import xlsxwriter
 #from xlsxwriter.utility import xl_rowcol_to_cell
@@ -38,8 +38,8 @@ sys.setdefaultencoding('utf8')
 
 with open(new_tmp + '/' + report_file3, "a+b") as report_file3_open:
   row_list = report_file3_open.readlines()[1:2]
-  max_perm = float(row_list[0].split('~')[4])
-  avg_perm = float(row_list[0].split('~')[3])
+  max_perm = float(row_list[0].split('~')[3])
+  avg_perm = float(row_list[0].split('~')[2])
   skew_factor = (100*(max_perm - avg_perm)/max_perm)
   report_file3_open.write('~~~~~System skew factor\n')
   report_file3_open.write('~~~~~' + str(skew_factor) + ' %\n')
@@ -133,7 +133,7 @@ def convert_to_excel(title, exportFileName):
     if verbose == True:
       logger.debug(config.wine + '      end: ' + config.yellow + title)
   joblib_method = "threads"
-  Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(delayed(LoadingToWorkbook)('loading in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file) for report_file in report_output_list )
+  joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(LoadingToWorkbook)('loading in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file) for report_file in report_output_list )
   end_time_excel_load = time.time()
   excel_load_seconds = [end_time_excel_load, -start_time_excel_load]
   time_excel_load_seconds = sum(excel_load_seconds)
