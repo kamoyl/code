@@ -55,6 +55,24 @@ def AWTweekly(title):
   if verbose == True:
     logger.debug(config.wine + '    start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
+    def AWTweekly(title):
+      if verbose == True:
+        logger.debug(config.wine + '    start: ' + config.yellow + title)
+      for day_week_range in range(1,8):
+        date_week = (report_date_long - datetime.timedelta(days=day_week_range)).strftime("%Y-%m-%d")
+        report_file8_open.seek(0,0)
+        week_prep_variable = ""
+        for week_line in report_file8_open:
+          if date_week in week_line:
+            week_prep_variable = week_prep_variable + week_line
+        week_prep_variable_fakefile = StringIO(week_prep_variable)
+        df_AWT_grid_graph_weekly=pandas.read_csv(week_prep_variable_fakefile, delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+        weekly_transpose = df_AWT_grid_graph_weekly.set_index('TheDate').T
+        with open(new_tmp + '/' + report_file10, "a+b") as weekly_transpose_result:
+          weekly_transpose.to_csv(weekly_transpose_result,index=True,header=1,sep='~')
+          weekly_transpose_result.write('\n\n')
+      if verbose == True:
+        logger.debug(config.wine + '      end: ' + config.yellow + title)
     def AWTweeklyPAR(title, day_week):
       if verbose == True:
         logger.debug(config.wine + '    start: ' + config.yellow + title)
@@ -74,10 +92,15 @@ def AWTweekly(title):
         weekly_transpose_result.write('\n\n')
       if verbose == True:
         logger.debug(config.wine + '      end: ' + config.yellow + title)
-    joblib_method = "processes"
-    start_time_AWTweeklyPAR_load = time.time()
-    joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTweeklyPAR)('AWT weekly in range parallel (' + joblib_method + '): ' + config.cyan  + str(day_week_range), day_week_range) for day_week_range in range(1,8) )
-    end_time_AWTweeklyPAR_load = time.time()
+    if multiload == True:
+      joblib_method = "processes"
+      start_time_AWTweeklyPAR_load = time.time()
+      joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTweeklyPAR)('AWT weekly in range parallel (' + joblib_method + '): ' + config.cyan  + str(day_week_range), day_week_range) for day_week_range in range(1,8) )
+      end_time_AWTweeklyPAR_load = time.time()
+    else:
+      start_time_AWTweeklyPAR_load = time.time()
+      AWTweekly('AWT weekly in range one process' + config.cyan)
+      end_time_AWTweeklyPAR_load = time.time()
   if verbose == True:
     logger.debug(config.wine + '      end: ' + config.yellow + title)
 
