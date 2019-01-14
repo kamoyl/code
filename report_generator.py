@@ -50,15 +50,11 @@ def usage():
   print(__file__ + '\n' + '                [-s, --source_env=' + config.green + '<PROD|PROD10|PROD11|DTA|host>' + config.cyan + ']\n' 
                         '                [-d, --date=' + config.green + '<DATE(YYYY-MM-DD)/WEEK_NR(XX)>' + config.cyan + ']\n' + 
                         '                [-u, --user=' + config.green + 'TECH_USER' + config.cyan + ']\n' +  
-                        '                [-n, --report_number=' + config.green + 'REPORT_NUMBER' + config.cyan + ']\n\n' +  
-                        '                [-m, --multi=' + config.green + '[0/1]' + config.cyan + ']\n\n' +
-                        '                [-o, --output=' + config.green + 'DIRECTORY' + config.cyan + ']\n' +
-                        '                [-v, --verbose\n' +  
-                        '                [-h, --help\n')
+                        '                [-n, --report_number=' + config.green + 'REPORT_NUMBER' + config.cyan + ']\n')
   config.usage()
 
 try:
-  opts, args = getopt.getopt(sys.argv[1:], "hs:o:d:u:n:vm", ["help", "source_env=", "output=", "date=", "user=", "report_number=", "verbose", "multi"])
+  opts, args = getopt.getopt(sys.argv[1:], "hs:o:d:u:n:vmN", ["help", "source_env=", "output=", "date=", "user=", "report_number=", "verbose", "multiload", "nobteq"])
 except getopt.GetoptError as err:
   print str(err)  # will print something like "option -a not recognized"
   usage()
@@ -66,6 +62,7 @@ except getopt.GetoptError as err:
 output = None
 verbose = False
 multiload = False
+nobteq = False
 user = None
 report_number = None
 report_date = None
@@ -96,8 +93,10 @@ for o, a in opts:
   elif o in ("-n", "--report_number"):
     report_number = a
     os.environ["REPORT_NUMBER"] = report_number
-  elif o in ("-m", "--multi"):
+  elif o in ("-m", "--multiload"):
     multiload = True
+  elif o in ("-N", "--nobteq"):
+    nobteq = True
   else:
     assert False, "unhandled option"
 
@@ -229,13 +228,16 @@ if verbose == True:
 
 #running appropriate BTEQ script
 start_time_bash_seconds = time.time()
-try:
-  #subprocess.check_call(scripts_home + '/bteq/report_' + report_number + '.bteq', shell=False, stdout = subprocess.PIPE)
-  if verbose == True:
-    logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file1)
-except:
-  logger.error("bteq script failed")
-  sys.exit(1)
+if nobteq == True:
+  logger.warning('BTEQ and output log will be omitted')
+else:
+  try:
+    subprocess.check_call(scripts_home + '/bteq/report_' + report_number + '.bteq', shell=False, stdout = subprocess.PIPE)
+    if verbose == True:
+      logger.debug('LOG file of running BTEQ: ' + config.blue +  new_log + '/'  + log_file1)
+  except:
+    logger.error("bteq script failed")
+    sys.exit(1)
 end_time_bash_seconds = time.time()
 bash_seconds = [end_time_bash_seconds, -start_time_bash_seconds]
 time_bash_seconds = sum(bash_seconds)
@@ -255,7 +257,7 @@ report_seconds = [end_time_report_seconds, -start_time_report_seconds]
 time_report_seconds = sum(report_seconds)
 #few remaning things: emailing, confluence page adding attachements etc.
 
-##few remaning things: emailing, confluence page adding attachements etc.
+#few remaning things: emailing, confluence page adding attachements etc.
 start_time_compression = time.time()
 #one-by-one:
 #for report_file in report_output_list:
@@ -266,7 +268,11 @@ start_time_compression = time.time()
 #joblib_method = "processes"
 joblib_method = "threads"
 joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.outArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file, env, new_tmp) for report_file in report_output_list )
-#joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
+if nobteq == True:
+  logger.warning('BTEQ and output log will be omitted')
+else:
+  joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(config.logArchive)('archiving in parallel (' + joblib_method + '): ' + config.cyan  + log_file, log_file, new_log) for log_file in log_file_list )
+
 end_time_compression = time.time()
 compression_seconds = [end_time_compression, -start_time_compression]
 time_compression_seconds = sum(compression_seconds)

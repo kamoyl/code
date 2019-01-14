@@ -67,10 +67,12 @@ coloredlogs.install(level='DEBUG',milliseconds=True)
 #funtions used accros all scripts
 #general usage definition - accros all scripts, more specific one will have this one as a part
 def usage():
-  print(lime + '   -o, --output=' + blue + '   directory to which will go all LOGs and TMPs')
-  print(blue + '                   default: ' + cyan + os.environ['HOME'] + '/var')
-  print(lime + '   -v, --verbose' + blue + '   verbose')
-  print(lime + '   -h, --help' + blue + '      help')
+  print('                [-N, --nobteq' + green + ' runs report WITHOUT bteq script (only python)' + cyan + ']\n'
+                        '                [-m, --multiload' + green + ' multiprocessing/multithreading is enabled' + cyan + ']\n' +
+                        '                [-o, --output=' + green + 'DIRECTORY to which will go all LOGs and TMPs' + cyan + ']\n' +
+                 blue + '                              default: ' + cyan + os.environ['HOME'] + '/var\n' + 
+                        '                [-v, --verbose\n' +
+                        '                [-h, --help\n')
 
 def get_ip():
   s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
