@@ -309,12 +309,19 @@ time_template_seconds = sum(template_seconds)
 python_seconds = [time_template_seconds, -time_bash_seconds, -time_report_seconds]
 time_python_seconds =sum(python_seconds)
 
-if (verbose == True) or (showtime == True):
+if showtime == True:
   logger.debug(config.limon + "Run time: " + config.wine + "%.4f" % time_template_seconds + config.limon +  " seconds")
-  logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
+  if nobteq == False:
+    logger.debug(config.limon + "BASH script run for: " + config.wine + "%.4f" % time_bash_seconds + config.limon +  " seconds")
   logger.debug(config.limon + "Python script (except report build) run for: " + config.wine + "%.4f" % time_python_seconds + config.limon + " seconds")
   if nobteq == True:
-    logger.debug(config.limon + "Compression out files time: " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
+    if multiload == True:
+      logger.debug(config.limon + "Compression out files time (parallel): " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
+    else:
+      logger.debug(config.limon + "Compression out files time (same process/thread): " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
   else:
-    logger.debug(config.limon + "Compression logs and out files time: " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
+    if multiload == True:
+      logger.debug(config.limon + "Compression logs and out files time (parallel): " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
+    else:
+      logger.debug(config.limon + "Compression logs and out files time (same process/thread): " + config.wine + "%.4f" % time_compression_seconds + config.limon +  " seconds")
   logger.debug(config.limon + "Report build python script run for: " + config.wine + "%.4f" % time_report_seconds + config.limon + " seconds")

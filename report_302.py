@@ -92,13 +92,21 @@ def AWTweekly(title):
         logger.debug(config.wine + '      end: ' + config.yellow + title)
     if multiload == True:
       joblib_method = "processes"
-      start_time_AWTweeklyPAR_load = time.time()
+      start_time_AWTweeklyRange_load = time.time()
       joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTweeklyPAR)('AWT weekly in range parallel (' + joblib_method + '): ' + config.cyan  + str(day_week_range), day_week_range) for day_week_range in range(1,8) )
-      end_time_AWTweeklyPAR_load = time.time()
+      end_time_AWTweeklyRange_load = time.time()
+      AWTweeklyRange_seconds = [end_time_AWTweeklyRange_load, -start_time_AWTweeklyRange_load]
+      time_AWTweeklyRange_seconds = sum(AWTweeklyRange_seconds)
+      if showtime == True:
+        logger.debug(config.limon + "   AWTweekly range of days (parallel) load: " + config.wine + "%.4f" % time_AWTweeklyRange_seconds + config.limon +  " seconds")
     else:
-      start_time_AWTweeklyPAR_load = time.time()
+      start_time_AWTweeklyRange_load = time.time()
       AWTweekly('AWT weekly in range one process' + config.cyan)
-      end_time_AWTweeklyPAR_load = time.time()
+      end_time_AWTweeklyRange_load = time.time()
+      AWTweeklyRange_seconds = [end_time_AWTweeklyRange_load, -start_time_AWTweeklyRange_load]
+      time_AWTweeklyRange_seconds = sum(AWTweeklyRange_seconds)
+      if showtime == True:
+        logger.debug(config.limon + "   AWTweekly range of days (same process/thread) load: " + config.wine + "%.4f" % time_AWTweeklyRange_seconds + config.limon +  " seconds")
   if verbose == True:
     logger.debug(config.wine + '      end: ' + config.yellow + title)
 
@@ -149,7 +157,7 @@ def convert_to_excel(title, exportFileName):
   columns = {}
   rows = {}
   logger.info('    Converting exported data into M$ Excel sheet (loading data): ' + config.cyan + export_file)
-  def LoadingToWorkbook(title, filename):
+  def LoadingToWorkbookPAR(title, filename):
     if verbose == True:
       logger.debug(config.wine + '    start: ' + config.yellow + title)
   #for filename in report_output_list:
@@ -164,11 +172,11 @@ def convert_to_excel(title, exportFileName):
     if verbose == True:
       logger.debug(config.wine + '      end: ' + config.yellow + title)
   joblib_method = "threads"
-  joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(LoadingToWorkbook)('loading in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file) for report_file in report_output_list )
+  joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(LoadingToWorkbookPAR)('loading in parallel (' + joblib_method + '): ' + config.cyan  + report_file, report_file) for report_file in report_output_list )
   end_time_excel_load = time.time()
   excel_load_seconds = [end_time_excel_load, -start_time_excel_load]
   time_excel_load_seconds = sum(excel_load_seconds)
-  if (verbose == True) or (showtime == True):
+  if showtime == True:
     logger.debug(config.limon + "Data loaded to excel time: " + config.wine + "%.4f" % time_excel_load_seconds + config.limon +  " seconds")
   logger.info('    Converting exported data into M$ Excel sheet (actual convert data): ' + config.cyan + export_file)
   # color scale in overall_system_activity
@@ -531,9 +539,9 @@ if multiload == True:
   time_AWTweekly_load_seconds = sum(AWTweekly_load_seconds)
   AWTdaily_load_seconds = [end_time_AWTdaily_load, -start_time_AWTdaily_load]
   time_AWTdaily_load_seconds = sum(AWTdaily_load_seconds)
-  if (verbose == True) or (showtime == True):
-    logger.debug(config.limon + "AWTdaily calculation time (parallel: " + config.cyan + str(multiload) + config.limon +  "): " + config.wine + "%.4f" % time_AWTdaily_load_seconds + config.limon +  " seconds")
-    logger.debug(config.limon + "AWTweekly calculation time (parallel: " + config.cyan + str(multiload) + config.limon +  "): " + config.wine + "%.4f" % time_AWTweekly_load_seconds + config.limon +  " seconds")
+  if showtime == True:
+    logger.debug(config.limon + "AWTdaily calculation time (separated process: " + config.cyan + str(multiload) + config.limon +  "): " + config.wine + "%.4f" % time_AWTdaily_load_seconds + config.limon +  " seconds")
+    logger.debug(config.limon + "AWTweekly calculation time (separated process: " + config.cyan + str(multiload) + config.limon +  "): " + config.wine + "%.4f" % time_AWTweekly_load_seconds + config.limon +  " seconds")
     logger.debug(config.limon + "AWTmonthly calculation time: " + config.wine + "%.4f" % time_AWTmonthly_load_seconds + config.limon +  " seconds")
 else:
   start_time_AWTweekly_load = time.time()
@@ -553,7 +561,7 @@ else:
   AWTdaily_load_seconds = [end_time_AWTdaily_load, -start_time_AWTdaily_load]
   time_AWTdaily_load_seconds = sum(AWTdaily_load_seconds)
   
-  if (verbose == True) or (showtime == True):
+  if showtime == True:
     logger.debug(config.limon + "AWTdaily calculation time (same process/thread): " + config.wine + "%.4f" % time_AWTdaily_load_seconds + config.limon +  " seconds")
     logger.debug(config.limon + "AWTweekly calculation time (same process/thread): " + config.wine + "%.4f" % time_AWTweekly_load_seconds + config.limon +  " seconds")
     logger.debug(config.limon + "AWTmonthly calculation time (same process/thread): " + config.wine + "%.4f" % time_AWTmonthly_load_seconds + config.limon +  " seconds")
@@ -567,5 +575,5 @@ else:
 end_time_excel_conversion = time.time()
 excel_conversion_seconds = [end_time_excel_conversion, -start_time_excel_conversion]
 time_excel_conversion_seconds = sum(excel_conversion_seconds)
-if (verbose == True) or (showtime == True):
+if showtime == True:
   logger.debug(config.limon + "Excel conversion time: " + config.wine + "%.4f" % time_excel_conversion_seconds + config.limon +  " seconds")
