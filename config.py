@@ -38,7 +38,7 @@ vpn2_network = "129.189.0.0/16"
 vpn=0
 office=0
 #amount of cores (for parallel processing)
-cpu_cores = cpu_count()
+cpu_cores = cpu_count()*2
 
 #export colours to BASH, for bteq to use
 os.environ["WINE"] = wine

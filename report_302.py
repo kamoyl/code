@@ -98,7 +98,7 @@ def AWTweekly(title):
       AWTweeklyRange_seconds = [end_time_AWTweeklyRange_load, -start_time_AWTweeklyRange_load]
       time_AWTweeklyRange_seconds = sum(AWTweeklyRange_seconds)
       if showtime == True:
-        logger.debug(config.limon + "   AWTweekly range of days (parallel) load: " + config.wine + "%.4f" % time_AWTweeklyRange_seconds + config.limon +  " seconds")
+        logger.debug(config.limon + "   AWTweekly range of days (parallel: " + config.cyan + joblib_method + config.lime + ") load: " + config.wine + "%.4f" % time_AWTweeklyRange_seconds + config.limon +  " seconds")
     else:
       start_time_AWTweeklyRange_load = time.time()
       AWTweekly('AWT weekly in range one process' + config.cyan)
@@ -153,7 +153,6 @@ def AWTdaily(title):
     def AWTdailyPAR (title, day_sorted):
       if verbose == True:
         logger.debug(config.wine + '    start: ' + config.yellow + title)
-    #for day in days_list_sorted:
       report_file8_open.seek(0,0)
       day_line_string = ""
       for day_line in report_file8_open:
@@ -168,14 +167,14 @@ def AWTdaily(title):
     if verbose == True:
       logger.debug(config.wine + '    end: ' + config.yellow + title)
     if multiload == True:
-      joblib_method = "processes"
+      joblib_method = "threads"
       start_time_AWTdailySorted_load = time.time()
       joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTdailyPAR)('AWT daily sorted in parallel (' + joblib_method + '): ' + config.cyan  + day, day) for day in days_list_sorted )
       end_time_AWTdailySorted_load = time.time()
       AWTdailySorted_seconds = [end_time_AWTdailySorted_load, -start_time_AWTdailySorted_load]
       time_AWTdailySorted_seconds = sum(AWTdailySorted_seconds)
       if showtime == True:
-        logger.debug(config.limon + "   AWTdaily sorted days (parallel) load: " + config.wine + "%.4f" % time_AWTdailySorted_seconds + config.limon +  " seconds")
+        logger.debug(config.limon + "   AWTdaily sorted days (parallel: " + config.cyan + joblib_method + config.lime + ") load: " + config.wine + "%.4f" % time_AWTdailySorted_seconds + config.limon +  " seconds")
     else:
       start_time_AWTdailySorted_load = time.time()
       AWTdaily('AWT daily sorted days one process' + config.cyan)
