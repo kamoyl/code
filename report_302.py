@@ -54,29 +54,13 @@ logger.info("Few manipulations for AWT extract data")
 def AWTweekly(title):
   if verbose == True:
     logger.debug(config.wine + '    start: ' + config.yellow + title)
-  with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
-    def AWTweeklySP(title):
-      if verbose == True:
-        logger.debug(config.wine + '    start: ' + config.yellow + title)
-      for day_week_range in range(1,8):
-        date_week = (report_date_long - datetime.timedelta(days=day_week_range)).strftime("%Y-%m-%d")
-        report_file8_open.seek(0,0)
-        week_prep_variable = ""
-        for week_line in report_file8_open:
-          if date_week in week_line:
-            week_prep_variable = week_prep_variable + week_line
-        week_prep_variable_fakefile = StringIO(week_prep_variable)
-        df_AWT_grid_graph_weekly=pandas.read_csv(week_prep_variable_fakefile, delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
-        weekly_transpose = df_AWT_grid_graph_weekly.set_index('TheDate').T
-        with open(new_tmp + '/' + report_file10, "a+b") as weekly_transpose_result:
-          weekly_transpose.to_csv(weekly_transpose_result,index=True,header=1,sep='~')
-          weekly_transpose_result.write('\n\n')
-      if verbose == True:
-        logger.debug(config.wine + '      end: ' + config.yellow + title)
-    def AWTweeklyPAR(title, day_week):
-      if verbose == True:
-        logger.debug(config.wine + '    start: ' + config.yellow + title)
-      date_week = (report_date_long - datetime.timedelta(days=day_week)).strftime("%Y-%m-%d")
+  #with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
+  report_file8_open = open(new_tmp + '/' + report_file8, "r")
+  def AWTweeklySP(title):
+    if verbose == True:
+      logger.debug(config.wine + '    start: ' + config.yellow + title)
+    for day_week_range in range(1,8):
+      date_week = (report_date_long - datetime.timedelta(days=day_week_range)).strftime("%Y-%m-%d")
       report_file8_open.seek(0,0)
       week_prep_variable = ""
       for week_line in report_file8_open:
@@ -85,28 +69,47 @@ def AWTweekly(title):
       week_prep_variable_fakefile = StringIO(week_prep_variable)
       df_AWT_grid_graph_weekly=pandas.read_csv(week_prep_variable_fakefile, delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
       weekly_transpose = df_AWT_grid_graph_weekly.set_index('TheDate').T
-      with open(new_tmp + '/' + report_file10, "a+b") as weekly_transpose_result:
-        weekly_transpose.to_csv(weekly_transpose_result,index=True,header=1,sep='~')
-        weekly_transpose_result.write('\n\n')
-      if verbose == True:
-        logger.debug(config.wine + '      end: ' + config.yellow + title)
-    if multiload == True:
-      joblib_method = "threads"
-      start_time_AWTweeklyRange_load = time.time()
-      joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTweeklyPAR)('AWT weekly in range parallel (' + joblib_method + '): ' + config.cyan  + str(day_week_range), day_week_range) for day_week_range in range(1,8) )
-      end_time_AWTweeklyRange_load = time.time()
-      AWTweeklyRange_seconds = [end_time_AWTweeklyRange_load, -start_time_AWTweeklyRange_load]
-      time_AWTweeklyRange_seconds = sum(AWTweeklyRange_seconds)
-      if showtime == True:
-        logger.debug(config.limon + "   AWTweekly range of days (parallel: " + config.cyan + joblib_method + config.lime + ") load: " + config.wine + "%.4f" % time_AWTweeklyRange_seconds + config.limon +  " seconds")
-    else:
-      start_time_AWTweeklyRange_load = time.time()
-      AWTweeklySP('AWT weekly in range one process' + config.cyan)
-      end_time_AWTweeklyRange_load = time.time()
-      AWTweeklyRange_seconds = [end_time_AWTweeklyRange_load, -start_time_AWTweeklyRange_load]
-      time_AWTweeklyRange_seconds = sum(AWTweeklyRange_seconds)
-      if showtime == True:
-        logger.debug(config.limon + "   AWTweekly range of days (same process/thread) load: " + config.wine + "%.4f" % time_AWTweeklyRange_seconds + config.limon +  " seconds")
+      #with open(new_tmp + '/' + report_file10, "a+b") as weekly_transpose_result:
+      weekly_transpose_result = open(new_tmp + '/' + report_file10, "a+b")
+      weekly_transpose.to_csv(weekly_transpose_result,index=True,header=1,sep='~')
+      weekly_transpose_result.write('\n\n')
+    if verbose == True:
+      logger.debug(config.wine + '      end: ' + config.yellow + title)
+  def AWTweeklyPAR(title, day_week):
+    if verbose == True:
+      logger.debug(config.wine + '    start: ' + config.yellow + title)
+    date_week = (report_date_long - datetime.timedelta(days=day_week)).strftime("%Y-%m-%d")
+    report_file8_open.seek(0,0)
+    week_prep_variable = ""
+    for week_line in report_file8_open:
+      if date_week in week_line:
+        week_prep_variable = week_prep_variable + week_line
+    week_prep_variable_fakefile = StringIO(week_prep_variable)
+    df_AWT_grid_graph_weekly=pandas.read_csv(week_prep_variable_fakefile, delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+    weekly_transpose = df_AWT_grid_graph_weekly.set_index('TheDate').T
+    #with open(new_tmp + '/' + report_file10, "a+b") as weekly_transpose_result:
+    weekly_transpose_result = open(new_tmp + '/' + report_file10, "a+b")
+    weekly_transpose.to_csv(weekly_transpose_result,index=True,header=1,sep='~')
+    weekly_transpose_result.write('\n\n')
+    if verbose == True:
+      logger.debug(config.wine + '      end: ' + config.yellow + title)
+  if multiload == True:
+    joblib_method = "threads"
+    start_time_AWTweeklyRange_load = time.time()
+    joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTweeklyPAR)('AWT weekly in range parallel (' + joblib_method + '): ' + config.cyan  + str(day_week_range), day_week_range) for day_week_range in range(1,8) )
+    end_time_AWTweeklyRange_load = time.time()
+    AWTweeklyRange_seconds = [end_time_AWTweeklyRange_load, -start_time_AWTweeklyRange_load]
+    time_AWTweeklyRange_seconds = sum(AWTweeklyRange_seconds)
+    if showtime == True:
+      logger.debug(config.limon + "   AWTweekly range of days (parallel: " + config.cyan + joblib_method + config.lime + ") load: " + config.wine + "%.4f" % time_AWTweeklyRange_seconds + config.limon +  " seconds")
+  else:
+    start_time_AWTweeklyRange_load = time.time()
+    AWTweeklySP('AWT weekly in range one process' + config.cyan)
+    end_time_AWTweeklyRange_load = time.time()
+    AWTweeklyRange_seconds = [end_time_AWTweeklyRange_load, -start_time_AWTweeklyRange_load]
+    time_AWTweeklyRange_seconds = sum(AWTweeklyRange_seconds)
+    if showtime == True:
+      logger.debug(config.limon + "   AWTweekly range of days (same process/thread) load: " + config.wine + "%.4f" % time_AWTweeklyRange_seconds + config.limon +  " seconds")
   if verbose == True:
     logger.debug(config.wine + '      end: ' + config.yellow + title)
 
@@ -123,66 +126,69 @@ def AWTmonthly(title):
 def AWTdaily(title):
   if verbose == True:
     logger.debug(config.wine + '    start: ' + config.yellow + title)
-  with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
-    next(report_file8_open)
-    day_date_list = [ ]
-    for day_line in report_file8_open:
-      day_date = day_line.split('~')[0]
-      day_date_list.append(day_date)
-    days_list_set = set(day_date_list)
-    days_list = list(days_list_set)
-    days_list_sorted = sorted(days_list)
-    days_sorted_amount = len(days_list_sorted)
-    def AWTdailySP(title):
-      if verbose == True:
-        logger.debug(config.wine + '    start: ' + config.yellow + title)
-      for day in days_list_sorted:
-        report_file8_open.seek(0,0)
-        day_line_string = ""
-        for day_line in report_file8_open:
-          if day in day_line:
-            day_line_string = day_line_string + day_line
-        daily_file = StringIO(day_line_string)
-        df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
-        daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
-        with open(new_tmp + '/' + report_file12, "a+b") as daily_transpose_final:
-          daily_transpose.to_csv(daily_transpose_final,index=True,header=1,sep='~')
-          daily_transpose_final.write('\n\n')
-      if verbose == True:
-        logger.debug(config.wine + '    end: ' + config.yellow + title)
-    def AWTdailyPAR(title, day_sorted):
-      if verbose == True:
-        logger.debug(config.wine + '    start: ' + config.yellow + title)
+  #with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
+  report_file8_open = open(new_tmp + '/' + report_file8, "r")
+  next(report_file8_open)
+  day_date_list = [ ]
+  for day_line in report_file8_open:
+    day_date = day_line.split('~')[0]
+    day_date_list.append(day_date)
+  days_list_set = set(day_date_list)
+  days_list = list(days_list_set)
+  days_list_sorted = sorted(days_list)
+  days_sorted_amount = len(days_list_sorted)
+  def AWTdailySP(title):
+    if verbose == True:
+      logger.debug(config.wine + '    start: ' + config.yellow + title)
+    for day in days_list_sorted:
       report_file8_open.seek(0,0)
       day_line_string = ""
       for day_line in report_file8_open:
-        if day_sorted in day_line:
+        if day in day_line:
           day_line_string = day_line_string + day_line
       daily_file = StringIO(day_line_string)
       df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
       daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
-      with open(new_tmp + '/' + report_file12, "a+b") as daily_transpose_final:
-        daily_transpose.to_csv(daily_transpose_final,index=True,header=1,sep='~')
-        daily_transpose_final.write('\n\n')
+      #with open(new_tmp + '/' + report_file12, "a+b") as daily_transpose_final:
+      daily_transpose_final = open(new_tmp + '/' + report_file12, "a+b")
+      daily_transpose.to_csv(daily_transpose_final,index=True,header=1,sep='~')
+      daily_transpose_final.write('\n\n')
     if verbose == True:
       logger.debug(config.wine + '    end: ' + config.yellow + title)
-    if multiload == True:
-      joblib_method = "processes"
-      start_time_AWTdailySorted_load = time.time()
-      joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTdailyPAR)('AWT daily sorted in parallel (' + joblib_method + '): ' + config.cyan  + day, day) for day in days_list_sorted )
-      end_time_AWTdailySorted_load = time.time()
-      AWTdailySorted_seconds = [end_time_AWTdailySorted_load, -start_time_AWTdailySorted_load]
-      time_AWTdailySorted_seconds = sum(AWTdailySorted_seconds)
-      if showtime == True:
-        logger.debug(config.limon + "   AWTdaily sorted days (parallel: " + config.cyan + joblib_method + config.lime + ") load: " + config.wine + "%.4f" % time_AWTdailySorted_seconds + config.limon +  " seconds")
-    else:
-      start_time_AWTdailySorted_load = time.time()
-      AWTdailySP('AWT daily sorted days one process' + config.cyan)
-      end_time_AWTdailySorted_load = time.time()
-      AWTdailySorted_seconds = [end_time_AWTdailySorted_load, -start_time_AWTdailySorted_load]
-      time_AWTdailySorted_seconds = sum(AWTdailySorted_seconds)
-      if showtime == True:
-        logger.debug(config.limon + "   AWTdaily sorted days (same process/thread) load: " + config.wine + "%.4f" % time_AWTdailySorted_seconds + config.limon +  " seconds")
+  def AWTdailyPAR(title, day_sorted):
+    if verbose == True:
+      logger.debug(config.wine + '    start: ' + config.yellow + title)
+    report_file8_open.seek(0,0)
+    day_line_string = ""
+    for day_line in report_file8_open:
+      if day_sorted in day_line:
+        day_line_string = day_line_string + day_line
+    daily_file = StringIO(day_line_string)
+    df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+    daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
+    #with open(new_tmp + '/' + report_file12, "a+b") as daily_transpose_final:
+    daily_transpose_final = open(new_tmp + '/' + report_file12, "a+b")
+    daily_transpose.to_csv(daily_transpose_final,index=True,header=1,sep='~')
+    daily_transpose_final.write('\n\n')
+  if verbose == True:
+    logger.debug(config.wine + '    end: ' + config.yellow + title)
+  if multiload == True:
+    joblib_method = "processes"
+    start_time_AWTdailySorted_load = time.time()
+    joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTdailyPAR)('AWT daily sorted in parallel (' + joblib_method + '): ' + config.cyan  + day, day) for day in days_list_sorted )
+    end_time_AWTdailySorted_load = time.time()
+    AWTdailySorted_seconds = [end_time_AWTdailySorted_load, -start_time_AWTdailySorted_load]
+    time_AWTdailySorted_seconds = sum(AWTdailySorted_seconds)
+    if showtime == True:
+      logger.debug(config.limon + "   AWTdaily sorted days (parallel: " + config.cyan + joblib_method + config.lime + ") load: " + config.wine + "%.4f" % time_AWTdailySorted_seconds + config.limon +  " seconds")
+  else:
+    start_time_AWTdailySorted_load = time.time()
+    AWTdailySP('AWT daily sorted days one process' + config.cyan)
+    end_time_AWTdailySorted_load = time.time()
+    AWTdailySorted_seconds = [end_time_AWTdailySorted_load, -start_time_AWTdailySorted_load]
+    time_AWTdailySorted_seconds = sum(AWTdailySorted_seconds)
+    if showtime == True:
+      logger.debug(config.limon + "   AWTdaily sorted days (same process/thread) load: " + config.wine + "%.4f" % time_AWTdailySorted_seconds + config.limon +  " seconds")
   os.remove(new_tmp + '/' + report_file8)
   if verbose == True:
     logger.debug(config.wine + '      end: ' + config.yellow + title)
