@@ -91,7 +91,7 @@ def AWTweekly(title):
       if verbose == True:
         logger.debug(config.wine + '      end: ' + config.yellow + title)
     if multiload == True:
-      joblib_method = "processes"
+      joblib_method = "threads"
       start_time_AWTweeklyRange_load = time.time()
       joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTweeklyPAR)('AWT weekly in range parallel (' + joblib_method + '): ' + config.cyan  + str(day_week_range), day_week_range) for day_week_range in range(1,8) )
       end_time_AWTweeklyRange_load = time.time()
@@ -167,7 +167,7 @@ def AWTdaily(title):
     if verbose == True:
       logger.debug(config.wine + '    end: ' + config.yellow + title)
     if multiload == True:
-      joblib_method = "threads"
+      joblib_method = "processes"
       start_time_AWTdailySorted_load = time.time()
       joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTdailyPAR)('AWT daily sorted in parallel (' + joblib_method + '): ' + config.cyan  + day, day) for day in days_list_sorted )
       end_time_AWTdailySorted_load = time.time()
