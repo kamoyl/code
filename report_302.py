@@ -133,11 +133,31 @@ def AWTdaily(title):
     days_list = list(days_list_set)
     days_list_sorted = sorted(days_list)
     days_sorted_amount = len(days_list_sorted)
-    for day in days_list_sorted:
+    def AWTdaily (title):
+      if verbose == True:
+        logger.debug(config.wine + '    start: ' + config.yellow + title)
+      for day in days_list_sorted:
+        report_file8_open.seek(0,0)
+        day_line_string = ""
+        for day_line in report_file8_open:
+          if day in day_line:
+            day_line_string = day_line_string + day_line
+        daily_file = StringIO(day_line_string)
+        df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
+        daily_transpose = df_AWT_grid_graph.set_index('TheDate').T
+        with open(new_tmp + '/' + report_file12, "a+b") as daily_transpose_final:
+          daily_transpose.to_csv(daily_transpose_final,index=True,header=1,sep='~')
+          daily_transpose_final.write('\n\n')
+      if verbose == True:
+        logger.debug(config.wine + '    end: ' + config.yellow + title)
+    def AWTdailyPAR (title, day_sorted):
+      if verbose == True:
+        logger.debug(config.wine + '    start: ' + config.yellow + title)
+    #for day in days_list_sorted:
       report_file8_open.seek(0,0)
       day_line_string = ""
       for day_line in report_file8_open:
-        if day in day_line:
+        if day_sorted in day_line:
           day_line_string = day_line_string + day_line
       daily_file = StringIO(day_line_string)
       df_AWT_grid_graph=pandas.read_csv(daily_file,delimiter='~',header=0,names=['TheDate','thistime','WD_ETL','WD_OTHER'])
@@ -145,6 +165,25 @@ def AWTdaily(title):
       with open(new_tmp + '/' + report_file12, "a+b") as daily_transpose_final:
         daily_transpose.to_csv(daily_transpose_final,index=True,header=1,sep='~')
         daily_transpose_final.write('\n\n')
+    if verbose == True:
+      logger.debug(config.wine + '    end: ' + config.yellow + title)
+    if multiload == True:
+      joblib_method = "processes"
+      start_time_AWTdailySorted_load = time.time()
+      joblib.Parallel(n_jobs=config.cpu_cores, prefer=joblib_method)(joblib.delayed(AWTdailyPAR)('AWT daily sorted in parallel (' + joblib_method + '): ' + config.cyan  + day, day) for day in days_list_sorted )
+      end_time_AWTdailySorted_load = time.time()
+      AWTdailySorted_seconds = [end_time_AWTdailySorted_load, -start_time_AWTdailySorted_load]
+      time_AWTdailySorted_seconds = sum(AWTdailySorted_seconds)
+      if showtime == True:
+        logger.debug(config.limon + "   AWTdaily sorted days (parallel) load: " + config.wine + "%.4f" % time_AWTdailySorted_seconds + config.limon +  " seconds")
+    else:
+      start_time_AWTdailySorted_load = time.time()
+      AWTdaily('AWT daily sorted days one process' + config.cyan)
+      end_time_AWTdailySorted_load = time.time()
+      AWTdailySorted_seconds = [end_time_AWTdailySorted_load, -start_time_AWTdailySorted_load]
+      time_AWTdailySorted_seconds = sum(AWTdailySorted_seconds)
+      if showtime == True:
+        logger.debug(config.limon + "   AWTdaily sorted days (same process/thread) load: " + config.wine + "%.4f" % time_AWTdailySorted_seconds + config.limon +  " seconds")
   os.remove(new_tmp + '/' + report_file8)
   if verbose == True:
     logger.debug(config.wine + '      end: ' + config.yellow + title)
@@ -542,7 +581,7 @@ if multiload == True:
   if showtime == True:
     logger.debug(config.limon + "AWTdaily calculation time (separated process: " + config.cyan + str(multiload) + config.limon +  "): " + config.wine + "%.4f" % time_AWTdaily_load_seconds + config.limon +  " seconds")
     logger.debug(config.limon + "AWTweekly calculation time (separated process: " + config.cyan + str(multiload) + config.limon +  "): " + config.wine + "%.4f" % time_AWTweekly_load_seconds + config.limon +  " seconds")
-    logger.debug(config.limon + "AWTmonthly calculation time: " + config.wine + "%.4f" % time_AWTmonthly_load_seconds + config.limon +  " seconds")
+    logger.debug(config.limon + "AWTmonthly calculation time (separated process: " + config.cyan + str(multiload) + config.limon +  "): " + config.wine + "%.4f" % time_AWTmonthly_load_seconds + config.limon +  " seconds")
 else:
   start_time_AWTweekly_load = time.time()
   AWTweekly('AWT weekly run (same process/thread): ' + config.cyan + report_file10)
