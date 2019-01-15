@@ -55,7 +55,7 @@ def AWTweekly(title):
   if verbose == True:
     logger.debug(config.wine + '    start: ' + config.yellow + title)
   with open(new_tmp + '/' + report_file8, "r") as report_file8_open:
-    def AWTweekly(title):
+    def AWTweeklySP(title):
       if verbose == True:
         logger.debug(config.wine + '    start: ' + config.yellow + title)
       for day_week_range in range(1,8):
@@ -101,7 +101,7 @@ def AWTweekly(title):
         logger.debug(config.limon + "   AWTweekly range of days (parallel: " + config.cyan + joblib_method + config.lime + ") load: " + config.wine + "%.4f" % time_AWTweeklyRange_seconds + config.limon +  " seconds")
     else:
       start_time_AWTweeklyRange_load = time.time()
-      AWTweekly('AWT weekly in range one process' + config.cyan)
+      AWTweeklySP('AWT weekly in range one process' + config.cyan)
       end_time_AWTweeklyRange_load = time.time()
       AWTweeklyRange_seconds = [end_time_AWTweeklyRange_load, -start_time_AWTweeklyRange_load]
       time_AWTweeklyRange_seconds = sum(AWTweeklyRange_seconds)
@@ -133,7 +133,7 @@ def AWTdaily(title):
     days_list = list(days_list_set)
     days_list_sorted = sorted(days_list)
     days_sorted_amount = len(days_list_sorted)
-    def AWTdaily (title):
+    def AWTdailySP(title):
       if verbose == True:
         logger.debug(config.wine + '    start: ' + config.yellow + title)
       for day in days_list_sorted:
@@ -150,7 +150,7 @@ def AWTdaily(title):
           daily_transpose_final.write('\n\n')
       if verbose == True:
         logger.debug(config.wine + '    end: ' + config.yellow + title)
-    def AWTdailyPAR (title, day_sorted):
+    def AWTdailyPAR(title, day_sorted):
       if verbose == True:
         logger.debug(config.wine + '    start: ' + config.yellow + title)
       report_file8_open.seek(0,0)
@@ -177,7 +177,7 @@ def AWTdaily(title):
         logger.debug(config.limon + "   AWTdaily sorted days (parallel: " + config.cyan + joblib_method + config.lime + ") load: " + config.wine + "%.4f" % time_AWTdailySorted_seconds + config.limon +  " seconds")
     else:
       start_time_AWTdailySorted_load = time.time()
-      AWTdaily('AWT daily sorted days one process' + config.cyan)
+      AWTdailySP('AWT daily sorted days one process' + config.cyan)
       end_time_AWTdailySorted_load = time.time()
       AWTdailySorted_seconds = [end_time_AWTdailySorted_load, -start_time_AWTdailySorted_load]
       time_AWTdailySorted_seconds = sum(AWTdailySorted_seconds)
