@@ -1,0 +1,93 @@
+#!/bin/bash
+
+BLACK=$(tput -T xterm setaf 0)
+RED=$(tput -T xterm setaf 1)
+GREEN=$(tput -T xterm setaf 2)
+YELLOW=$(tput -T xterm setaf 3)
+LIME_YELLOW=$(tput -T xterm setaf 190)
+POWDER_BLUE=$(tput -T xterm setaf 153)
+BLUE=$(tput -T xterm setaf 4)
+MAGENTA=$(tput -T xterm setaf 5)
+CYAN=$(tput -T xterm setaf 6)
+WHITE=$(tput -T xterm setaf 7)
+BRIGHT=$(tput -T xterm bold)
+NORMAL=$(tput -T xterm sgr0)
+BLINK=$(tput -T xterm blink)
+REVERSE=$(tput -T xterm smso)
+UNDERLINE=$(tput -T xterm smul)
+RESET=$(tput -T xterm sgr0)
+WINE=$(echo -e "\x1b[38;2;191;000;000m")
+LIME=$(echo -e "\x1b[38;2;191;255;000m")
+TERM="xterm"
+
+if [[ "${OSTYPE}" =~ "linux" ]]
+then
+  SCRIPT=$(readlink -f ${0})
+elif [[ "${OSTYPE}" =~ "darwin" ]]
+then
+  SCRIPT=$(greadlink -f ${0})
+else
+  SCRIPT=$(readlink -f ${0})
+fi
+
+PATH_SCRIPTS=$(dirname ${SCRIPT})
+PATH_PARENT_SCRIPTS=$(dirname ${PATH_SCRIPTS})
+PATH_GRANDPARENT_SCRIPTS=$(dirname ${PATH_PARENT_SCRIPTS})
+CURRENT_PATH=$(pwd -P)
+SCRIPT_NAME=$(basename ${0})
+PATH_OUTPUT="${PATH_SCRIPTS}/output"
+SCRIPTS_HOME="${PATH_SCRIPTS}"
+
+CURRENT_TIMESTAMP=$(date "+%H.%M.%S")
+
+progress_indicator()
+{
+  PROGRESS_COLOR="\x1b[38;2;240;000;000m"
+  echo -ne "${PROGRESS_COLOR}..    \r"
+  sleep 0.15
+  echo -ne "${PROGRESS_COLOR}  ..  \r"
+  sleep 0.15
+  echo -ne "${PROGRESS_COLOR}    ..\r"
+  sleep 0.15
+}
+
+exec 3>&2 # logging stream (file descriptor 3) defaults to STDERR
+verbosity=5 # default to show warnings
+silent_lvl=0
+crt_lvl=1
+err_lvl=2
+wrn_lvl=3
+inf_lvl=4
+dbg_lvl=5
+
+notify() { log ${silent_lvl} "${LIME}NOTE: $1${BLUE}"; } # Always prints
+critical() { log ${crt_lvl} "${BRIGHT}${RED}CRITICAL: $1${NORMAL}${BLUE}"; }
+error() { log ${err_lvl} "${RED}ERROR: $1${BLUE}"; }
+warn() { log ${wrn_lvl} "${WINE}WARNING: $1${BLUE}"; }
+inf() { log ${inf_lvl} "${CYAN}INFO: $1${BLUE}"; } # "info" is already a command
+debug() { log ${dbg_lvl} "DEBUG: $1"; }
+log() {
+      if [ ${verbosity} -ge $1 ]
+      then
+        datestring=$(date +'%Y-%m-%d %H:%M:%S')
+        # Expand escaped characters, wrap at 300 chars, indent wrapped lines
+        #echo -e "${BLUE}${datestring} $(basename $0) [${ENV} ${REPORT_NUMBER}] ${SHLVL} ${2}${RESET}" | fold -w300 -s | sed '2~1s/^/  /' >&3
+        echo -e "${BLUE}${datestring} $(basename $0) [${ENV} ${REPORT_NUMBER}] ${2}${RESET}" | fold -w300 -s | sed '2~1s/^/  /' >&3
+      fi
+}
+
+export -f inf
+export -f debug
+export -f warn
+export -f critical
+export -f notify
+export -f error
+export -f log
+export verbosity
+
+function failed {
+  local r=$?
+  set +o errtrace
+  set +o xtrace
+  error "EXIT code: ${YELLOW}${r}${RED} in ${YELLOW}${BASH_SOURCE[1]}${RED} at about ${YELLOW}${BASH_LINENO[0]}${RED}"
+}

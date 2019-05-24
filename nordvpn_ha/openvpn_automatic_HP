@@ -1,0 +1,243 @@
+#!/bin/bash
+
+#DOCS:
+#http://www.system-rescue-cd.org/networking/Load-balancing-using-iptables-with-connmark/
+#https://blog.khax.net/2009/12/01/multi-gateway-balancing-with-iptables/
+#https://serverfault.com/questions/821583/routes-for-two-openvpn-connections-different-hosts-in-the-same-client
+
+if [[ "${OSTYPE}" =~ "linux" ]]
+then
+  SCRIPT=$(readlink -f $0)
+elif [[ "${OSTYPE}" =~ "darwin" ]]
+then
+  SCRIPT=$(greadlink -f $0)
+else
+  SCRIPT=$(readlink -f $0)
+fi
+
+SCRIPTS_HOME=$(dirname ${SCRIPT})
+source "${SCRIPTS_HOME}/config"
+echo -e "${BLUE}${datestring} EXECUTE: ${YELLOW}[ ${LIME}$0 $@ ${YELLOW} ]${RESET}"
+
+VERBOSE=no
+while getopts ":o:v" ARG
+do
+  case "${ARG}" in
+        v)
+            VERBOSE=yes
+            ;;
+        o)
+            o=${OPTARG}
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z ${o} ]
+then
+  VAR="${HOME}/var"
+  mkdir -p ${VAR}
+else
+  VAR="${o}"
+  mkdir -p ${VAR} > /dev/null 2>&1
+  if [ $? -ne 0 ]
+  then
+    error "I have no permissions to create OUTPUT directory here"
+    exit 1
+  fi
+fi
+
+TMP="${VAR}/TMP"
+mkdir -p ${TMP}
+LOG="${VAR}/log"
+mkdir -p ${LOG}
+
+inf "Configuration of NordVPN preparation"
+MAIN_ETH="enxb827eb330952"
+NORDVPN_HA_PROCESS="nordvpn_ha_process"
+LOCAL_GATEWAY="192.168.2.254"
+RECOMMENDED_SERVERS=$(curl --silent 'https://nordvpn.com/wp-admin/admin-ajax.php?action=servers_recommendations' | jq --raw-output '.[].hostname')
+
+VPN_SERVER1_NAME=$(echo ${RECOMMENDED_SERVERS} | awk '{print $1}')
+VPN_IP_SERVER1=$(nslookup ${VPN_SERVER1_NAME} | grep -A2 ^Name: | grep ^Address: | awk '{print $2}')
+VPN_SERVER1="remote ${VPN_IP_SERVER1} 443"
+VPN_SERVER1_DEV="tun0"
+
+VPN_SERVER2_NAME=$(echo ${RECOMMENDED_SERVERS} | awk '{print $2}')
+VPN_IP_SERVER2=$(nslookup ${VPN_SERVER2_NAME} | grep -A2 ^Name: | grep ^Address: | awk '{print $2}')
+VPN_SERVER2="remote ${VPN_IP_SERVER2} 443"
+VPN_SERVER2_DEV="tun1"
+
+VPN_SERVER3_NAME=$(echo ${RECOMMENDED_SERVERS} | awk '{print $3}')
+VPN_IP_SERVER3=$(nslookup ${VPN_SERVER3_NAME} | grep -A2 ^Name: | grep ^Address: | awk '{print $2}')
+VPN_SERVER3="remote ${VPN_IP_SERVER3} 443"
+VPN_SERVER3_DEV="tun2"
+
+VPN_SERVER4_NAME=$(echo ${RECOMMENDED_SERVERS} | awk '{print $4}')
+VPN_IP_SERVER4=$(nslookup ${VPN_SERVER4_NAME} | grep -A2 ^Name: | grep ^Address: | awk '{print $2}')
+VPN_SERVER4="remote ${VPN_IP_SERVER4} 443"
+VPN_SERVER4_DEV="tun3"
+
+VPN_SERVER5_NAME=$(echo ${RECOMMENDED_SERVERS} | awk '{print $5}')
+VPN_IP_SERVER5=$(nslookup ${VPN_SERVER5_NAME} | grep -A2 ^Name: | grep ^Address: | awk '{print $2}')
+VPN_SERVER5="remote ${VPN_IP_SERVER5} 443"
+VPN_SERVER5_DEV="tun4"
+
+
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "PARAMETERS of VPN1:
+                                                  VPN_SERVER1_NAME  =   ${WINE}${VPN_SERVER1_NAME}${BLUE}
+                                                  VPN_IP_SERVER1    =   ${WINE}${VPN_IP_SERVER1}${BLUE}
+                                                  VPN_SERVER1       =   ${WINE}${VPN_SERVER1}${BLUE}"
+  debug "PARAMETERS of VPN2:
+                                                  VPN_SERVER2_NAME  =   ${WINE}${VPN_SERVER2_NAME}${BLUE}
+                                                  VPN_IP_SERVER2    =   ${WINE}${VPN_IP_SERVER2}${BLUE}
+                                                  VPN_SERVER2       =   ${WINE}${VPN_SERVER2}${BLUE}"
+  debug "PARAMETERS of VPN3:
+                                                  VPN_SERVER3_NAME  =   ${WINE}${VPN_SERVER3_NAME}${BLUE}
+                                                  VPN_IP_SERVER3    =   ${WINE}${VPN_IP_SERVER3}${BLUE}
+                                                  VPN_SERVER3       =   ${WINE}${VPN_SERVER3}${BLUE}"
+  debug "PARAMETERS of VPN4:
+                                                  VPN_SERVER4_NAME  =   ${WINE}${VPN_SERVER4_NAME}${BLUE}
+                                                  VPN_IP_SERVER4    =   ${WINE}${VPN_IP_SERVER4}${BLUE}
+                                                  VPN_SERVER4       =   ${WINE}${VPN_SERVER4}${BLUE}"
+  debug "PARAMETERS of VPN5:
+                                                  VPN_SERVER5_NAME  =   ${WINE}${VPN_SERVER5_NAME}${BLUE}
+                                                  VPN_IP_SERVER5    =   ${WINE}${VPN_IP_SERVER5}${BLUE}
+                                                  VPN_SERVER5       =   ${WINE}${VPN_SERVER5}${BLUE}"
+fi
+
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "Copying VPNserver1 configuration from template"
+fi
+cp -f /etc/openvpn/nordvpn_template.conf /etc/openvpn/nordvpn_srv1.conf
+sed -i "s/remote_variable/${VPN_SERVER1}\n${VPN_SERVER2}\n${VPN_SERVER3}\n${VPN_SERVER4}\n${VPN_SERVER5}/g" /etc/openvpn/nordvpn_srv1.conf
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "Copying VPNserver2 configuration from template"
+fi
+cp -f /etc/openvpn/nordvpn_template.conf /etc/openvpn/nordvpn_srv2.conf
+sed -i "s/remote_variable/${VPN_SERVER2}\n${VPN_SERVER3}\n${VPN_SERVER4}\n${VPN_SERVER5}\n${VPN_SERVER1}/g" /etc/openvpn/nordvpn_srv2.conf
+
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "Copying VPNserver3 configuration from template"
+fi
+cp -f /etc/openvpn/nordvpn_template.conf /etc/openvpn/nordvpn_srv3.conf
+sed -i "s/remote_variable/${VPN_SERVER3}\n${VPN_SERVER4}\n${VPN_SERVER5}\n${VPN_SERVER1}\n${VPN_SERVER2}/g" /etc/openvpn/nordvpn_srv3.conf
+
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "Copying VPNserver4 configuration from template"
+fi
+cp -f /etc/openvpn/nordvpn_template.conf /etc/openvpn/nordvpn_srv4.conf
+sed -i "s/remote_variable/${VPN_SERVER4}\n${VPN_SERVER5}\n${VPN_SERVER1}\n${VPN_SERVER2}\n${VPN_SERVER3}/g" /etc/openvpn/nordvpn_srv4.conf
+
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "Copying VPNserver5 configuration from template"
+fi
+cp -f /etc/openvpn/nordvpn_template.conf /etc/openvpn/nordvpn_srv5.conf
+sed -i "s/remote_variable/${VPN_SERVER5}\n${VPN_SERVER1}\n${VPN_SERVER2}\n${VPN_SERVER3}\n${VPN_SERVER4}/g" /etc/openvpn/nordvpn_srv5.conf
+
+inf "Stopping NordVPN connections"
+systemctl stop openvpn@nordvpn &
+systemctl stop openvpn@nordvpn_srv1 &
+systemctl stop openvpn@nordvpn_srv2 &
+systemctl stop openvpn@nordvpn_srv3 &
+inf "Cleaning routing tables of tun interfaces"
+ip -s -d route flush table ${VPN_SERVER1_DEV} > "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d route flush table "${VPN_SERVER2_DEV}" >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d route del 192.168.100.0/24 via 192.168.2.10 >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d route del 192.168.122.0/24 via 192.168.2.10 >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+
+inf "Cleaning rules related to tun interfaces"
+ip -s -d rule del from all fwmark 0x1 lookup ${VPN_SERVER1_DEV} >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d rule del from all fwmark 0x1 >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d rule del from all fwmark 0x2 lookup "${VPN_SERVER1_DEV}" >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d rule del from all fwmark 0x2 >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+IFS=$'\n'
+for RULE in $(ip rule | grep lookup | grep tun)
+do
+  SRC=$(echo ${RULE} | awk '{print $3}')
+  DEV=$(echo ${RULE} | awk '{print $NF}')
+  if [[ ${VERBOSE} == yes ]]
+  then
+    debug "Removing RULE: ${YELLOW}${RULE}${BLUE}"
+  fi
+  (
+    ip -s -d rule del from ${SRC} lookup ${DEV} >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+    if [ $? -eq 0 ]
+    then
+      if [[ ${VERBOSE} == yes ]]
+      then
+        debug "RULE Removed : ${YELLOW}${RULE}${CYAN} removed"
+      fi
+    fi
+  ) &
+done
+wait
+
+inf "Starting ${YELLOW}openvpn@nordvpn_srv1${CYAN} configuration"
+systemctl start openvpn@nordvpn_srv1
+for i in {6..0}
+do
+  echo -ne "  .   ${i}   .  "'\r'
+  sleep .50
+  echo -ne "    . ${i} .    "'\r'
+  sleep .50
+done
+echo -ne ""'\r'
+VPN_SERVER1_NET=$(route | grep '0.0.0.0' | grep -v '^0.0.0.0' | grep 'tun0' | awk '{print $1}')
+VPN_SERVER1_ROUTER=$(route | grep '0.0.0.0' | grep -v '^0.0.0.0' | grep 'tun0' | awk '{print $1}' | sed 's/\.0$/\.1/g')
+VPN_SERVER1_LOCALROUTER_IP=$(ip route show | grep ^${VPN_SERVER1_NET} | grep ${VPN_SERVER1_DEV} | awk '{print $NF}')
+
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "PARAMETERS of VPN1:
+                                                  VPN_SERVER1_NET               =   ${WINE}${VPN_SERVER1_NET}${BLUE}
+                                                  VPN_SERVER1_ROUTER            =   ${WINE}${VPN_SERVER1_ROUTER}${BLUE}
+                                                  VPN_SERVER1_LOCALROUTER_IP    =   ${WINE}${VPN_SERVER1_LOCALROUTER_IP}"
+fi
+
+ip -s -d rule add from "${VPN_SERVER1_LOCALROUTER_IP}" lookup "${VPN_SERVER1_DEV}" >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d route add default via "${VPN_SERVER1_ROUTER}" dev "${VPN_SERVER1_DEV}" table "${VPN_SERVER1_DEV}" >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d rule add fwmark 1 table "${VPN_SERVER1_DEV}" >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+
+inf "Starting ${YELLOW}openvpn@nordvpn_srv2${CYAN} configuration"
+systemctl start openvpn@nordvpn_srv2
+for i in {6..0}
+do
+  echo -ne "  .   ${i}   .  "'\r'
+  sleep .50
+  echo -ne "    . ${i} .    "'\r'
+  sleep .50
+done
+echo -ne ""'\r'
+VPN_SERVER2_NET=$(route | grep '0.0.0.0' | grep -v '^0.0.0.0' | grep 'tun1' | awk '{print $1}')
+VPN_SERVER2_ROUTER=$(route | grep '0.0.0.0' | grep -v '^0.0.0.0' | grep 'tun1' | awk '{print $1}' | sed 's/\.0$/\.1/g')
+VPN_SERVER2_LOCALROUTER_IP=$(ip route show | grep ^${VPN_SERVER2_NET} | grep ${VPN_SERVER2_DEV} | awk '{print $NF}')
+
+if [[ ${VERBOSE} == yes ]]
+then
+  debug "PARAMETERS of VPN2:
+                                                  VPN_SERVER2_NET               =   ${WINE}${VPN_SERVER2_NET}${BLUE}
+                                                  VPN_SERVER2_ROUTER            =   ${WINE}${VPN_SERVER2_ROUTER}${BLUE}
+                                                  VPN_SERVER2_LOCALROUTER_IP        ${WINE}${VPN_SERVER2_LOCALROUTER_IP}"
+fi
+
+ip -s -d rule add from "${VPN_SERVER2_LOCALROUTER_IP}" lookup "${VPN_SERVER2_DEV}" >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d route add default via "${VPN_SERVER2_ROUTER}" dev "${VPN_SERVER2_DEV}" table "${VPN_SERVER2_DEV}" >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d rule add fwmark 2 table "${VPN_SERVER2_DEV}" >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+
+ip -s -d route add 192.168.100.0/24 via 192.168.2.10 >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+ip -s -d route add 192.168.122.0/24 via 192.168.2.10 >> "${LOG}/${NORDVPN_HA_PROCESS}_${CURRENT_TIMESTAMP}.log" 2>&1
+
+ip route flush cache
+inf "Aplying HA iptables configuration"
+source /etc/openvpn/openvpn_automatic_HP_iptables1
