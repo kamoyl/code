@@ -1,4 +1,4 @@
-# code:
+# python excercise:
 
 In this repo, there are some of my exercises of coding - mixing code between **SQL**, **bash** and **python**
 using many showed examples in the Internet, and of course documentation...
@@ -6,12 +6,6 @@ using many showed examples in the Internet, and of course documentation...
 bash has been used partially only because I have noticed that it is easier to implement SQL queries then manage
 it by python + ODBC, and it is also far easier to start using such combination on different systems knowing that
 only bash, python + modules is needed (and in this case Teradata command line client - bteq)
-
-## ToDo:
-- [ ] - still a lot, manage all variables in python - to read them by sql script
-- [ ] - lots of notification, error handling (still recognizing topic)
-- [ ] - paralellization - I would love to implement it, but... yeah, time will show
-- [ ] - lots more :)
 
 # Changelog:
 
